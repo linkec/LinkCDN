@@ -1,10 +1,10 @@
 <?php 
-/**
-#	Project: WingMan - PUA Tranning APP
+/*
+#	Project: LinkCDN - The World Best CDN Manage System
 #
-#	$Id: inc/class/cache.class.php 2016-1-6 08:57:35 Linkec $
+#	$Id: inc/function/cache.func.php 2018-10-26 12:41:29 Linkec $
 #
-#	Copyright (C) 2004-2016 Doopaa.Inc. All Rights Reserved. 
+#	Copyright (C) 2009-2019 SuikeTech.Inc. All Rights Reserved.
 #
 */
 !defined('IN_APP') && exit('[XDDrive] Access Denied');
@@ -32,7 +32,7 @@ class super_cache {
 			$str .= "// This is LinkCDN auto-generated file. Do NOT modify me.".LF;
 			$str .= "// Cache Time: ".date("Y-m-d H:i:s").LF;
 			$str .= "// Function: $cache_func".LF.LF;
-			$str .=	"if(!defined('IN_MYAPP')){".LF;
+			$str .=	"if(!defined('IN_APP')){".LF;
 			$str .= "\texit('[LinkCDN] Access Denied');".LF;
 			$str .= "}".LF.LF;
 			$str .= "return '".str_replace("'","\'",serialize($arr))."';".LF;
