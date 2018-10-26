@@ -6,15 +6,15 @@ $configs = array(
 
 	'dbhost' => '127.0.0.1',
 
-	'dbname' => 'rayconsole',
+	'dbname' => 'LinkCDN',
 
-	'dbuser' => 'rayconsole',
+	'dbuser' => 'LinkCDN',
 
-	'dbpasswd' => 'linke-.-123',
+	'dbpasswd' => 'PnAlqL8',
 
 	'pconnect' => 0,
 	
-	'tpf' => 'ray_',
+	'tpf' => 'cdn_',
 	
 	'charset' => 'utf-8',
 
