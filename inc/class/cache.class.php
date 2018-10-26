@@ -21,21 +21,20 @@ class super_cache {
 		global $db,$tpf;
 		if(is_array($arr)){
 			if($uid){
-				$cache_dir = PHPDISK_ROOT.'system/cache/'.$uid.'/'.$c_type.'/'.self::store_path($c_key);
+				$cache_dir = APP_ROOT.'system/cache/'.$uid.'/'.$c_type.'/'.self::store_path($c_key);
 			}else{
-				$cache_dir = PHPDISK_ROOT.'system/cache/common/'.$c_type.'/'.self::store_path($c_key);
+				$cache_dir = APP_ROOT.'system/cache/common/'.$c_type.'/'.self::store_path($c_key);
 			}
 			$file = $cache_dir.$c_key.'.php';
 			make_dir($cache_dir);
 
 			$str = "<?php".LF.LF;
-			$str .= "// This is PHPDISK auto-generated file. Do NOT modify me.".LF;
+			$str .= "// This is LinkCDN auto-generated file. Do NOT modify me.".LF;
 			$str .= "// Cache Time: ".date("Y-m-d H:i:s").LF;
 			$str .= "// Function: $cache_func".LF.LF;
-			$str .=	"if(!defined('IN_PHPDISK')){".LF;
-			$str .= "\texit('[PHPDisk] Access Denied');".LF;
+			$str .=	"if(!defined('IN_MYAPP')){".LF;
+			$str .= "\texit('[LinkCDN] Access Denied');".LF;
 			$str .= "}".LF.LF;
-			//$str .= "return '".serialize(self::addslashes_array($arr))."';".LF;
 			$str .= "return '".str_replace("'","\'",serialize($arr))."';".LF;
 			$str .= "?>".LF;
 
@@ -63,8 +62,8 @@ class super_cache {
 				$c_key = md5($c_type.$cache_func.$uid);
 				$p_dir = $uid.'/'.$c_type.'/';
 			}
-			make_dir(PHPDISK_ROOT.'system/cache/'.$p_dir);
-			$file = PHPDISK_ROOT.'system/cache/'.$p_dir.self::store_path($c_key).$c_key.'.php';
+			make_dir(APP_ROOT.'system/cache/'.$p_dir);
+			$file = APP_ROOT.'system/cache/'.$p_dir.self::store_path($c_key).$c_key.'.php';
 
 			/*if(file_exists($file) && $life_time==0){
 				return unserialize(include_once($file));
@@ -112,7 +111,7 @@ class super_cache {
 		}
 	}
 	public static function clear_all(){
-		$cache_dir = PHPDISK_ROOT.'system/cache/';
+		$cache_dir = APP_ROOT.'system/cache/';
 		self::_get_cache_file($cache_dir);
 	}
 	public static function clear_by_key($cache_func,$c_type='public',$uid=0){
@@ -123,19 +122,19 @@ class super_cache {
 			$c_key = md5($c_type.$cache_func.(int)$c_uid);
 			$p_dir = $uid.'/'.$c_type.'/';
 		}
-		$cache_dir = PHPDISK_ROOT.'system/cache/'.$p_dir.self::store_path($c_key);
+		$cache_dir = APP_ROOT.'system/cache/'.$p_dir.self::store_path($c_key);
 		self::_get_cache_file($cache_dir,1,$c_key);
 	}
 	public static function clear_by_uid($c_uid){
-		$cache_dir = PHPDISK_ROOT.'system/cache/'.$c_uid.'/';
+		$cache_dir = APP_ROOT.'system/cache/'.$c_uid.'/';
 		self::_get_cache_file($cache_dir);
 	}
 	public static function clear_by_cate($c_type){
-		$cache_dir = PHPDISK_ROOT.'system/cache/common/'.$c_type.'/';
+		$cache_dir = APP_ROOT.'system/cache/common/'.$c_type.'/';
 		self::_get_cache_file($cache_dir);
 	}
 	public static function clear_by_cu($c_uid,$c_type){
-		$cache_dir = PHPDISK_ROOT.'system/cache/'.$c_uid.'/'.$c_type.'/';
+		$cache_dir = APP_ROOT.'system/cache/'.$c_uid.'/'.$c_type.'/';
 		self::_get_cache_file($cache_dir);
 	}
 	public static function _get_cache_file($dir,$dir_flag=1,$key='') {
