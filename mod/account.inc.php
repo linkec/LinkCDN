@@ -58,14 +58,14 @@ switch($act){
 		header('location:/');
 		break;
 	case 'signup':
-		if($task=='reg'){
-			// error_reporting(1);
+		if($task=='signup'){
 			form_auth(gpc('formhash','P',''),formhash());
 			$username = trim(gpc('username','P',''));
 			$password = trim(gpc('password','P',''));
 			$confirm_password = trim(gpc('confirm_password','P',''));
 			$email = trim(gpc('email','P',''));
 			$phone = trim(gpc('phone','P',''));
+			
 			if(!is_numeric($phone) || strlen($phone)<11){
 				$error = true;
 				$sysmsg['phone'] = '请输入正确的手机号码';
@@ -77,22 +77,7 @@ switch($act){
 				}
 				unset($rs);
 			}
-			if(checklength($username,2,60)){
-				$error = true;
-				$sysmsg['username'] = '请输入正确的用户名';
-			}elseif(is_bad_chars($username)){
-				$error = true;
-				$sysmsg['username'] = '您输入的用户名中有非法字符';
-			}else{
-				$rs = $db->fetch_one_array("select username from {$tpf}users where username='$username' limit 1");
-				if($rs){
-					if(strcasecmp($username,$rs['username']) ==0){
-						$error = true;
-						$sysmsg['username'] = '用户名已经存在，请重试。';
-					}
-				}
-				unset($rs);
-			}
+			
 			if(checklength($password,6,20)){
 				$error = true;
 				$sysmsg['password'] = '请输入6-20位的密码';
@@ -104,6 +89,7 @@ switch($act){
 					$sysmsg['password'] = '您两次输入的密码不一致。';
 				}
 			}
+			
 			if(!checkemail($email)){
 				$error = true;
 				$sysmsg['email'] = '请输入正确的邮箱地址';
@@ -117,7 +103,7 @@ switch($act){
 					unset($rs);
 				}
 			}
-			// exit($upline_uid);
+			
 			if(!$error){
 				$ins = array(
 					'username'=>$username,
@@ -131,25 +117,8 @@ switch($act){
 				$db->query("insert into {$tpf}users set ".$db->sql_array($ins).";");
 				$userid = $db->insert_id();
 				
-				// $email_content_url = $settings['website_url']."account/verify/$verify_code";
-				// $email_content_body = '请点击以下链接以完成验证邮箱。';
-				// $email_body = get_email_tpl('default',$email_content_body,$email_content_url);
-				
-				// $ins = array(
-					// 'email_to'=>$email,
-					// 'status'=>'pendding',
-					// 'title'=>$settings['site_title'].' 用户注册验证邮箱',
-					// 'body'=>$email_body,
-					// 'in_time'=>$timestamp,
-				// );
-				// $db->query("insert into {$tpf}email set ".$db->sql_array($ins).";");
-				
-				// $userinfo_hash = md5('vbqo34qbvy23hcz'.$userid);
-				// $cookie_info = "$userid|$userinfo_hash";
-				
-				// app_setcookie($session_cookie_name,$cookie_info,0,'/',$settings['cookie_domain']);
 				$_SESSION['uid'] = $userid;
-				header("location:/home");
+				header("location:/manage");
 				exit;
 			}
 		}

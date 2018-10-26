@@ -33,7 +33,7 @@ function template_echo($tpl,$tpl_dir,$is_admin_tpl=0){
 		$tpl_src_file = $tpl_default_dir.$tpl.'.tpl.php';
 	}
 	
-	if(@filemtime($tpl_cache_file) < @filemtime($tpl_src_file)){
+	if(@filemtime($tpl_cache_file) < @filemtime($tpl_src_file) || DEBUG){
 		write_file($tpl_cache_file,template_parse($tpl_src_file));
 		return $tpl_cache_file;
 	}

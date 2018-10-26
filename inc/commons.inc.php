@@ -34,6 +34,7 @@ if(strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
 }
 //定义系统常用变量
 define('APP_ROOT', substr(dirname(__FILE__), 0, -3));
+define('STATIC_PATH', '');
 define('IN_APP',TRUE);
 define('SERVER_NAME',$_SERVER['SERVER_NAME']);
 //定义时区

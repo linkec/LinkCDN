@@ -1,525 +1,141 @@
 <?php 
 // This is auto-generated file. Do NOT modify.
 
-// Cache Time:2017-07-26 03:22:22
+// Cache Time:2018-10-27 01:12:26
 
 !defined('IN_APP') && exit('[MYAPP] Access Denied');
 
 ?>
-<?php !defined('IN_APP') && exit('[XDDrive] Access Denied!'); ?><!DOCTYPE html>
-<html lang="en">
-
+<?php !defined('IN_APP') && exit('[XDDrive] Access Denied!'); ?>
+<!DOCTYPE html>
+<html dir="ltr">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>控制台 | 睿速 - 睿智的网站加速</title>
-
-
-    <!--STYLESHEET-->
-    <!--=================================================-->
-
-    <!--Open Sans Font [ OPTIONAL ]-->
-    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,300,600,700' rel='stylesheet' type='text/css'>
-
-
-    <!--Bootstrap Stylesheet [ REQUIRED ]-->
-    <link href="<?=$static_url?>/css/bootstrap.min.css" rel="stylesheet">
-
-
-    <!--Nifty Stylesheet [ REQUIRED ]-->
-    <link href="<?=$static_url?>/css/nifty.min.css" rel="stylesheet">
-
-
-    <!--Nifty Premium Icon [ DEMONSTRATION ]-->
-    <link href="<?=$static_url?>/css/demo/nifty-demo-icons.min.css" rel="stylesheet">
-
-    <!--Ion Icons [ OPTIONAL ]-->
-    <link href="<?=$static_url?>/plugins/ionicons/css/ionicons.min.css" rel="stylesheet">
-
-
-
-        
-    <!--Morris.js [ OPTIONAL ]-->
-    <link href="<?=$static_url?>/plugins/morris-js/morris.min.css" rel="stylesheet">
-
-
-    <!--Magic Checkbox [ OPTIONAL ]-->
-    <link href="<?=$static_url?>/plugins/magic-check/css/magic-check.min.css" rel="stylesheet">
-    <link href="<?=$static_url?>/plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet">
-
-
-	<style>
-	.record-list tr{
-		height:49px;
-	}
-	.unchangeable {
-		background-color: #f9f9f9;
-	}
-	#floating-top-right {
-		z-index:99999999;
-	}
-	</style>
-
-
-
-    
-    <!--JAVASCRIPT-->
-    <!--=================================================-->
-
-    <!--Pace - Page Load Progress Par [OPTIONAL]-->
-    <link href="<?=$static_url?>/plugins/pace/pace.min.css" rel="stylesheet">
-    <script src="<?=$static_url?>/plugins/pace/pace.min.js"></script>
-
-
-    <!--jQuery [ REQUIRED ]-->
-    <script src="<?=$static_url?>/js/jquery.min.js"></script>
-
-
-    <!--BootstrapJS [ RECOMMENDED ]-->
-    <script src="<?=$static_url?>/js/bootstrap.min.js"></script>
-
-
-    <!--NiftyJS [ RECOMMENDED ]-->
-    <script src="<?=$static_url?>/js/nifty.min.js"></script>
-    <!--Select2 [ OPTIONAL ]-->
-    <link href="<?=$static_url?>/plugins/select2/css/select2.min.css" rel="stylesheet">
-        
-    <!--Summernote [ OPTIONAL ]-->
-    <link href="<?=$static_url?>/plugins/summernote/summernote.min.css" rel="stylesheet">
-
-
-
-
-
-
-
-
-
-    <!--=================================================-->
-    <!--Flot Chart [ OPTIONAL ]-->
-    <script src="<?=$static_url?>/plugins/flot-charts/jquery.flot.min.js"></script>
-	<script src="<?=$static_url?>/plugins/flot-charts/jquery.flot.resize.min.js"></script>
-
-    <!--Morris.js [ OPTIONAL ]-->
-    <script src="<?=$static_url?>/plugins/morris-js/morris.min.js"></script>
-	<script src="<?=$static_url?>/plugins/morris-js/raphael-js/raphael.min.js"></script>
-    <!--Easy Pie Chart [ OPTIONAL ]-->
-    <script src="<?=$static_url?>/plugins/easy-pie-chart/jquery.easypiechart.min.js"></script>
-
-
-
-    <!--Sparkline [ OPTIONAL ]-->
-    <script src="<?=$static_url?>/plugins/sparkline/jquery.sparkline.min.js"></script>
-    <!--Bootbox Modals [ OPTIONAL ]-->
-    <script src="<?=$static_url?>/plugins/bootbox/bootbox.min.js"></script>
-
-    <!--Select2 [ OPTIONAL ]-->
-    <script src="<?=$static_url?>/plugins/select2/js/select2.min.js"></script>
-    <!--Summernote [ OPTIONAL ]-->
-    <script src="<?=$static_url?>/plugins/summernote/summernote.min.js"></script>
-    <script src="<?=$static_url?>/js/jquery.animateNumber.min.js"></script>
-    <script src="<?=$static_url?>/js/echarts.min.js"></script>
-
-    <script>
-	Date.prototype.Format = function (fmt) { //author: meizz 
-		var o = {
-			"M+": this.getMonth() + 1, //月份 
-			"d+": this.getDate(), //日 
-			"h+": this.getHours(), //小时 
-			"m+": this.getMinutes(), //分 
-			"s+": this.getSeconds(), //秒 
-			"q+": Math.floor((this.getMonth() + 3) / 3), //季度 
-			"S": this.getMilliseconds() //毫秒 
-		};
-		if (/(y+)/.test(fmt)) fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
-		for (var k in o)
-		if (new RegExp("(" + k + ")").test(fmt)) fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
-		return fmt;
-	}
-	</script>
-
-
-
-
-
-
-
-    
-    <!--=================================================
-
-    REQUIRED
-    You must include this in your project.
-
-
-    RECOMMENDED
-    This category must be included but you may modify which plugins or components which should be included in your project.
-
-
-    OPTIONAL
-    Optional plugins. You may choose whether to include it in your project or not.
-
-
-    DEMONSTRATION
-    This is to be removed, used for demonstration purposes only. This category must not be included in your project.
-
-
-    SAMPLE
-    Some script samples which explain how to initialize plugins or components. This category should not be included in your project.
-
-
-    Detailed information and more samples can be found in the document.
-
-    =================================================-->
-        
-
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>管理平台</title>
+    <link href="<?=STATIC_PATH?>/assets/libs/chartist/dist/chartist.min.css" rel="stylesheet">
+    <link href="<?=STATIC_PATH?>/assets/extra-libs/c3/c3.min.css" rel="stylesheet">
+    <link href="<?=STATIC_PATH?>/dist/css/style.min.css" rel="stylesheet">
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+    <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+	<![endif]-->
+    <script src="<?=STATIC_PATH?>/assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="<?=STATIC_PATH?>/assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="<?=STATIC_PATH?>/assets/libs/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="<?=STATIC_PATH?>/dist/js/app.min.js"></script>
+    <script src="<?=STATIC_PATH?>/dist/js/app.init.light-sidebar.js"></script>
+    <script src="<?=STATIC_PATH?>/dist/js/app-style-switcher.js"></script>
+    <script src="<?=STATIC_PATH?>/assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="<?=STATIC_PATH?>/assets/extra-libs/sparkline/sparkline.js"></script>
+    <script src="<?=STATIC_PATH?>/dist/js/waves.js"></script>
+    <script src="<?=STATIC_PATH?>/dist/js/sidebarmenu.js"></script>
+    <script src="<?=STATIC_PATH?>/dist/js/custom.min.js"></script>
+    <script src="<?=STATIC_PATH?>/assets/libs/chartist/dist/chartist.min.js"></script>
+    <script src="<?=STATIC_PATH?>/assets/libs/chartist-plugin-tooltips/dist/chartist-plugin-tooltip.min.js"></script>
+    <script src="<?=STATIC_PATH?>/assets/extra-libs/c3/d3.min.js"></script>
+    <script src="<?=STATIC_PATH?>/assets/extra-libs/c3/c3.min.js"></script>
+    <script src="<?=STATIC_PATH?>/assets/libs/chart.js/dist/Chart.min.js"></script>
+    <script src="<?=STATIC_PATH?>/dist/js/pages/dashboards/dashboard1.js"></script>
 </head>
-
-<!--TIPS-->
-<!--You may remove all ID or Class names which contain "demo-", they are only used for demonstration. -->
 <body>
-    <div id="container" class="effect aside-float aside-bright mainnav-lg footer-fixed navbar-fixed">
-        
-        <!--NAVBAR-->
-        <!--===================================================-->
-        <header id="navbar">
-            <div id="navbar-container" class="boxed">
-
-                <!--Brand logo & name-->
-                <!--================================-->
+    <div class="preloader">
+        <div class="lds-ripple">
+            <div class="lds-pos"></div>
+            <div class="lds-pos"></div>
+        </div>
+    </div>
+    <div id="main-wrapper">
+        <header class="topbar">
+            <nav class="navbar top-navbar navbar-expand-md navbar-dark">
                 <div class="navbar-header">
-                    <a href="#" class="navbar-brand">
-                        <img src="<?=$static_url?>/img/logo.png" alt="Nifty Logo" class="brand-icon">
-                        <div class="brand-title">
-                            <span class="brand-text">RAYCDN</span>
-                        </div>
+                    <a class="nav-toggler waves-effect waves-light d-block d-md-none" href="javascript:void(0)"><i class="ti-menu ti-close"></i></a>
+                    <a class="navbar-brand" href="index.html">
+                        <b class="logo-icon">
+                            <img src="<?=STATIC_PATH?>/assets/images/logo-icon.png" alt="homepage" class="dark-logo" />
+                            <img src="<?=STATIC_PATH?>/assets/images/logo-light-icon.png" alt="homepage" class="light-logo" />
+                        </b>
+                        <span class="logo-text">
+                             <img src="<?=STATIC_PATH?>/assets/images/logo-text.png" alt="homepage" class="dark-logo" />  
+                             <img src="<?=STATIC_PATH?>/assets/images/logo-light-text.png" class="light-logo" alt="homepage" />
+                        </span>
                     </a>
+                    <a class="topbartoggler d-block d-md-none waves-effect waves-light" href="javascript:void(0)" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><i class="ti-more"></i></a>
                 </div>
-                <!--================================-->
-                <!--End brand logo & name-->
-
-
-                <!--Navbar Dropdown-->
-                <!--================================-->
-                <div class="navbar-content clearfix">
-                    <ul class="nav navbar-top-links pull-left">
-
-                        <!--Navigation toogle button-->
-                        <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-                        <li class="tgl-menu-btn">
-                            <a class="mainnav-toggle" href="#">
-                                <i class="demo-pli-view-list"></i>
-                            </a>
-                        </li>
-                        <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-                        <!--End Navigation toogle button-->
-
-
-
-                        <!--Notification dropdown-->
-                        <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-                        <li class="dropdown">
-                            <a href="#" data-toggle="dropdown" class="dropdown-toggle">
-                                <i class="demo-pli-bell"></i>
-								<?php if($has_new_msg){ ?>
-                                <span class="badge badge-header badge-danger"></span>
-								<?php } ?>
-                            </a>
-
-                           
-                            <div class="dropdown-menu dropdown-menu-md">
-                                <div class="pad-all bord-btm">
-                                    <p class="text-semibold text-main mar-no">你有 <?=$has_new_msg?> 个新消息</p>
-                                </div>
-                                <div class="nano scrollable">
-                                    <div class="nano-content">
-                                        <ul class="head-list">
-											 <?php foreach($notifications as $v){ ?>
-                                            <li>
-                                                <a class="media" href="/messages/view/<?=$v['id']?>">
-                                                    <div class="media-body">
-                                                        <div class="text-nowrap<?=$v['is_read'] ? '' : ' text-semibold'?>"><?=$v['subject']?></div>
-                                                        <small class="text-muted"><?=$v['in_time']?></small>
-                                                    </div>
-                                                </a>
-                                            </li>
-											 <?php } ?>
-                                        </ul>
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left mr-auto">
+                        <li class="nav-item d-none d-md-block"><a class="nav-link sidebartoggler waves-effect waves-light" href="javascript:void(0)" data-sidebartype="mini-sidebar"><i class="mdi mdi-menu font-24"></i></a></li>
+                    </ul>
+                    <ul class="navbar-nav float-right">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-muted waves-effect waves-dark pro-pic" href="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src="<?=STATIC_PATH?>/assets/images/users/1.jpg" alt="user" class="rounded-circle" width="31"></a>
+                            <div class="dropdown-menu dropdown-menu-right user-dd animated flipInY">
+                                <span class="with-arrow"><span class="bg-primary"></span></span>
+                                <div class="d-flex no-block align-items-center p-15 bg-primary text-white m-b-10">
+                                    <div class=""><img src="<?=STATIC_PATH?>/assets/images/users/1.jpg" alt="user" class="img-circle" width="60"></div>
+                                    <div class="m-l-10">
+                                        <h4 class="m-b-0"><?=$myinfo['username']?></h4>
+                                        <p class=" m-b-0"><?=$myinfo['email']?></p>
                                     </div>
                                 </div>
-
-                                <!--Dropdown footer-->
-                                <div class="pad-all bord-top">
-                                    <a href="/messages/home" class="btn-link text-dark box-block">
-                                        <i class="fa fa-angle-right fa-lg pull-right"></i> 查看所有消息
-                                    </a>
-                                </div>
+                                <a class="dropdown-item" href="javascript:void(0)"><i class="ti-user m-r-5 m-l-5"></i> 个人信息</a>
+                                <a class="dropdown-item" href="javascript:void(0)"><i class="ti-wallet m-r-5 m-l-5"></i> 技术支持</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="javascript:void(0)"><i class="fa fa-power-off m-r-5 m-l-5"></i> 安全退出</a>
                             </div>
                         </li>
-                        <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-                        <!--End notifications dropdown
-                        <li style="color:red;font-size:25px;font-weight:bolder;">
-						系统正在升级中，暂时可能不能对域名进行修改等操作。
-                        </li>-->
                     </ul>
-                    <ul class="nav navbar-top-links pull-right">
-
-                        <!--User dropdown-->
-                        <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-                        <li id="dropdown-user">
-                            <a href="/settings/profile" class="text-right">
-                                <span class="pull-right">
-                                    <!--<img class="img-circle img-user media-object" src="img/profile-photos/1.png" alt="Profile Picture">-->
-                                    <i class="demo-pli-male ic-user"></i>
-                                </span>
-                                <div class="username hidden-xs"><?=$app_username?></div>
-                            </a>
-                        </li>
-                        <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-                        <!--End user dropdown-->
-
-                        <li>
-                            <a onclick="logout();">
-                                <i class="ion-arrow-return-right"></i>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-                <!--================================-->
-                <!--End Navbar Dropdown-->
-
-            </div>
-        </header>
-        <!--===================================================-->
-        <!--END NAVBAR-->
-		<script>
-			function logout(){
-				bootbox.dialog({
-					message: "你确定要退出吗？",
-					title: "系统提醒！",
-					buttons: {
-						default: {
-							label: "取消",
-							className: "btn-default",
-							callback: function() {
-							}
-						},
-
-						danger: {
-							label: "确定！",
-							className: "btn-danger",
-							callback: function() {
-								location='/account/logout';
-							}
-						}
-					}
-				});
-
-			}
-		</script>
-        <div class="boxed">
-
-
-            <div id="content-container">
-				<?php require_once template_echo(''.$mod.'/'.$act.'','tpl/default/'); ?>
-            </div>
-            
-            <!--MAIN NAVIGATION-->
-            <!--===================================================-->
-            <nav id="mainnav-container" style="position:fixed">
-                <div id="mainnav">
-
-                    <!--Menu-->
-                    <!--================================-->
-                    <div id="mainnav-menu-wrap">
-                        <div class="nano">
-                            <div class="nano-content">
-
-                                <!--Profile Widget-->
-                                <!--================================-->
-                                <div id="mainnav-profile" class="mainnav-profile">
-                                    <div class="profile-wrap">
-                                        <div class="pad-btm">
-                                            <img class="img-circle img-sm img-border" src="<?=$static_url?>/img/profile-photos/1.png" alt="Profile Picture">
-                                        </div>
-                                        <a href="#profile-nav" class="box-block" data-toggle="collapse" aria-expanded="false">
-                                            <p class="mnp-name"><?=$app_username?></p>
-                                            <span class="mnp-desc"><?=$app_email?></span>
-                                        </a>
-                                    </div>
-                                </div>
-
-
-                                <!--Shortcut buttons-->
-                                <!--================================-->
-                                <div id="mainnav-shortcut">
-                                    <ul class="list-unstyled">
-
-
-                                        <li class="col-xs-3" data-content="个人信息">
-                                            <a class="shortcut-grid" href="/settings/profile">
-                                                <i class="ion-person" style="font-size: 20px;"></i>
-                                            </a>
-                                        </li>
-                                        <li class="col-xs-3" data-content="消息中心">
-                                            <a class="shortcut-grid" href="/messages/home">
-                                                <i class="ion-ios-bell" style="font-size: 20px;"></i>
-                                            </a>
-                                        </li>
-                                        <li class="col-xs-3" data-content="域名列表">
-                                            <a class="shortcut-grid" href="/mysites">
-                                                <i class="ion-earth" style="font-size: 19px;"></i>
-                                            </a>
-                                        </li>
-                                        <li class="col-xs-3" data-content="发布工单">
-                                            <a class="shortcut-grid" href="/workorders/new">
-                                                <i class="ion-ios-list-outline" style="font-size: 19px;"></i>
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <ul id="mainnav-menu" class="list-group">
-						            <li class="list-header">导航</li>
-						            <li <?=$mod=='home' ? 'class="active-link"' : ''?>>
-						                <a href="/home">
-						                    <i class="ion-ios-nutrition"></i>
-						                    <span class="menu-title">
-												我的概览
-											</span>
-						                </a>
-						            </li>
-						            <li <?=$mod=='mysites' ? 'class="active"' : ''?>>
-						                <a href="#">
-						                    <i class="ion-earth"></i>
-						                    <span class="menu-title">
-												我的域名
-											</span>
-											<i class="arrow"></i>
-						                </a>
-						                <ul class="collapse">
-						                    <li <?=$mod=='mysites' && $act=='add' ? 'class="active-link"' : ''?>><a href="/mysites/add">添加域名</a></li>
-						                    <li <?=$mod=='mysites' && $act!='add' ? 'class="active-link"' : ''?>><a href="/mysites">域名列表</a></li>
-						                </ul>
-						            </li>
-						            <li <?=$mod=='addon' ? 'class="active"' : ''?>>
-						                <a href="#">
-						                    <i class="ion-ios-cart"></i>
-						                    <span class="menu-title">
-												增值服务
-											</span>
-											<i class="arrow"></i>
-						                </a>
-						                <ul class="collapse">
-											<li <?=$mod=='addon' && $act=='waf_pro' ? 'class="active-link"' : ''?>><a href="/addon/waf_pro">WAF PRO</a></li>
-						                    <li <?=$mod=='addon' && $act=='antiddos_pro' ? 'class="active-link"' : ''?>><a href="/addon/antiddos_pro">Anti-DDOS PRO</a></li>
-						                </ul>
-						            </li>
-						            <li <?=$mod=='orders' ? 'class="active"' : ''?>>
-						                <a href="#">
-						                    <i class="ion-social-yen"></i>
-						                    <span class="menu-title">
-												财务相关
-											</span>
-											<i class="arrow"></i>
-						                </a>
-						                <ul class="collapse">
-						                    <li <?=$mod=='orders' && $act=='topup' ? 'class="active-link"' : ''?>><a href="/orders/topup">订单记录</a></li>
-											<li <?=$mod=='orders' && $act=='money_log' ? 'class="active-link"' : ''?>><a href="/orders/money_log">购买记录</a></li>
-											<li <?=$mod=='orders' && $act=='pay_log' ? 'class="active-link"' : ''?>><a href="/orders/pay_log">消费记录</a></li>
-						                </ul>
-						            </li>
-						            <li <?=$mod=='settings' ? 'class="active"' : ''?>>
-						                <a href="#">
-						                    <i class="ion-ios-gear-outline"></i>
-						                    <span class="menu-title">
-												账户设置
-											</span>
-											<i class="arrow"></i>
-						                </a>
-						                <ul class="collapse">
-						                    <li <?=$mod=='settings' && $act=='profile' ? 'class="active-link"' : ''?>><a href="/settings/profile">个人信息</a></li>
-											<li <?=$mod=='settings' && $act=='limit' ? 'class="active-link"' : ''?>><a href="/settings/limit">消费限额</a></li>
-											
-						                </ul>
-						            </li>
-						            <li <?=$mod=='workorders' ? 'class="active"' : ''?>>
-						                <a href="#">
-						                    <i class="ion-ios-list-outline"></i>
-						                    <span class="menu-title">
-												工单系统
-											</span>
-											<i class="arrow"></i>
-						                </a>
-						                <ul class="collapse">
-						                    <li <?=$mod=='workorders' && $act=='new' ? 'class="active-link"' : ''?>><a href="/workorders/new">新的工单</a></li>
-											<li <?=$mod=='workorders' && $act!='new' ? 'class="active-link"' : ''?>><a href="/workorders/list">我的工单</a></li>
-						                </ul>
-						            </li>
-						            <li <?=$mod=='messages' ? 'class="active-link"' : ''?>>
-						                <a href="/messages/home">
-						                    <i class="ion-ios-bell-outline"></i>
-						                    <span class="menu-title">
-												消息中心
-											</span>
-						                </a>
-						            </li>
-                            </div>
-                        </div>
-                    </div>
-                    <!--================================-->
-                    <!--End menu-->
-
                 </div>
             </nav>
-            <!--===================================================-->
-            <!--END MAIN NAVIGATION-->
-
-        </div>
-
-        
-
-        <!-- FOOTER -->
-        <!--===================================================-->
-        <footer id="footer">
-
-            <!-- Visible when footer positions are fixed -->
-            <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-            <div class="show-fixed pull-right">
-                睿速 - 睿智的网站加速　　
+        </header>
+        <aside class="left-sidebar">
+            <div class="scroll-sidebar">
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li>
+                            <div class="user-profile d-flex no-block dropdown m-t-20">
+                                <div class="user-pic"><img src="<?=STATIC_PATH?>/assets/images/users/1.jpg" alt="users" class="rounded-circle" width="40" /></div>
+                                <div class="user-content hide-menu m-l-10">
+                                    <a href="javascript:void(0)" class="" id="Userdd" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <h5 class="m-b-0 user-name font-medium"><?=$myinfo['username']?> <i class="fa fa-angle-down"></i></h5>
+                                        <span class="op-5 user-email"><?=$myinfo['email']?></span>
+                                    </a>
+                                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="Userdd">
+                                        <a class="dropdown-item" href="javascript:void(0)"><i class="ti-user m-r-5 m-l-5"></i> 个人信息</a>
+                                        <a class="dropdown-item" href="javascript:void(0)"><i class="ti-wallet m-r-5 m-l-5"></i> 技术支持</a>
+                                        <div class="dropdown-divider"></div>
+                                        <a class="dropdown-item" href="javascript:void(0)"><i class="fa fa-power-off m-r-5 m-l-5"></i> 安全退出</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="p-15 m-t-10"><a href="javascript:void(0)" class="btn btn-block create-btn text-white no-block d-flex align-items-center"><i class="fa fa-plus-square"></i> <span class="hide-menu m-l-5">添加网站</span> </a></li>
+                        
+						<li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">管理平台</span></li>
+						<li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link active" href="/manage" aria-expanded="false"><i class="mdi mdi-arrange-bring-forward"></i><span class="hide-menu">平台概览</span></a></li>
+                        <li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">站点中心</span></li>
+                        <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/websites" aria-expanded="false"><i class="mdi mdi-web"></i><span class="hide-menu">我的网站</span></a></li>
+                        <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/certificates" aria-expanded="false"><i class="mdi mdi-certificate"></i><span class="hide-menu">证书管理</span></a></li>
+                        <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/purchase" aria-expanded="false"><i class="mdi mdi-cart-plus"></i><span class="hide-menu">购买套餐</span></a></li>
+                        <li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">用户中心</span></li>
+                        <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/profile" aria-expanded="false"><i class="mdi mdi-account"></i><span class="hide-menu">个人信息</span></a></li>
+                        <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/security" aria-expanded="false"><i class="mdi mdi-lock"></i><span class="hide-menu">安全设置</span></a></li>
+                        <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/orders" aria-expanded="false"><i class="mdi mdi-format-list-bulleted"></i><span class="hide-menu">订单管理</span></a></li>
+                        <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/costs" aria-expanded="false"><i class="mdi mdi-apps"></i><span class="hide-menu">消费明细</span></a></li>
+                        <li class="sidebar-item"> <a class="sidebar-link waves-effect waves-dark sidebar-link" href="/loginHistory" aria-expanded="false"><i class="mdi mdi-account-alert"></i><span class="hide-menu">登录日志</span></a></li>
+                    </ul>
+                </nav>
             </div>
-
-            <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-            <!-- Remove the class "show-fixed" and "hide-fixed" to make the content always appears. -->
-            <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
-
-            <p class="pad-lft">&#0169; 2017 RayCDN.COM</p>
-
-
-
-        </footer>
-        <!--===================================================-->
-        <!-- END FOOTER -->
-
-
-        <!-- SCROLL PAGE BUTTON -->
-        <!--===================================================-->
-        <button class="scroll-top btn">
-            <i class="pci-chevron chevron-up"></i>
-        </button>
-        <!--===================================================-->
-		<div class="modal fade" id="remoteModal" role="dialog" tabindex="-1" aria-labelledby="demo-default-modal" aria-hidden="true">
-			<div class="modal-dialog">
-				<div class="modal-content">
-				</div>
-			</div>
-		</div>
-
-
-
+        </aside>
+        <div class="page-wrapper">
+			<?php require_once template_echo(''.$mod.'/'.$act.'','tpl/default/'); ?>
+            <footer class="footer text-center">
+				   All Rights Reserved by LinkCDN. Designed and Developed by <a href="https://wrappixel.com">WrapPixel</a>.
+			</footer>
+        </div>
     </div>
-    <!--===================================================-->
-    <!-- END OF CONTAINER -->
-
-
-    
 </body>
 </html>
