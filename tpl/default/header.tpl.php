@@ -1,0 +1,1 @@
+<?php !defined('IN_APP') && exit('[XDDrive] Access Denied!'); ?>

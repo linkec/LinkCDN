@@ -1,0 +1,551 @@
+<?php
+//core file start
+use \Workerman\Connection\AsyncTcpConnection;
+use \Workerman\Lib\Timer;
+
+define('RAYCDN_BACKEND_VERSION','W2.40');
+define('NGX_CONF_DIR','/raycdn/cdnconf/');
+define('SSL_DIR','/raycdn/sslres/');
+define('CACHE_DIR','/raycdn/cache/');
+define('API_URL','https://www.raycdn.com/newapi/');
+define('PASSWORD','linke-.-123');
+
+function do_timer(){
+	collect_netcard();
+	collect_sysinfo();
+	Timer::add(1, function(){
+		collect_netcard();
+	});
+	Timer::add(60,function(){
+		collect_sysinfo();
+	});
+}
+function collect_netcard(){
+	global $global;
+	$netcards = $global->netcards;
+	$strs = @file("/proc/net/dev"); 
+	for ($i = 2; $i < count($strs); $i++ )
+	{
+		preg_match_all( "/([^\s]+):[\s]{0,}(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/", $strs[$i], $info );
+		$netcards[$info[1][0]]['outspeed'] = isset($netcards[$info[1][0]]['out']) ? $info[10][0]-$netcards[$info[1][0]]['out'] : 0;
+		$netcards[$info[1][0]]['inspeed'] = isset($netcards[$info[1][0]]['in']) ? $info[2][0]-$netcards[$info[1][0]]['in'] : 0;
+		$netcards[$info[1][0]]['out'] = (int)$info[10][0];
+		$netcards[$info[1][0]]['in'] = (int)$info[2][0];
+		$global->netcards = $netcards;
+	}
+}
+function collect_sysinfo(){
+	global $global;
+	if (false === ($str = @file("/proc/loadavg"))){
+		$error = true;
+	}else{
+		$str = explode(" ", implode("", $str));
+		$str = array_chunk($str, 4);
+		$res['loadAvg'] = implode(" ", $str[0]);
+		unset($str);
+	}
+	
+	if (false === ($str = @file("/proc/meminfo"))){
+		$error = true;
+	}else{
+		//MB为单位
+		$str = implode("", $str);
+		preg_match_all("/MemTotal\s{0,}\:+\s{0,}([\d\.]+).+?MemFree\s{0,}\:+\s{0,}([\d\.]+).+?Cached\s{0,}\:+\s{0,}([\d\.]+).+?SwapTotal\s{0,}\:+\s{0,}([\d\.]+).+?SwapFree\s{0,}\:+\s{0,}([\d\.]+)/s", $str, $buf);
+		preg_match_all("/Buffers\s{0,}\:+\s{0,}([\d\.]+)/s", $str, $buffers);
+		$res['hostname'] = gethostname();
+		$res['connections'] = (int)shell_exec('ss -t -a | wc -l');
+		$res['memTotal'] = round($buf[1][0]*1024, 2);
+		$res['memFree'] = round($buf[2][0]*1024, 2);
+		$res['memBuffers'] = round($buffers[1][0]*1024, 2);
+		$res['memCached'] = round($buf[3][0]*1024, 2);
+		$res['memUsed'] = $res['memTotal']-$res['memFree'];
+		$res['memPercent'] = (floatval($res['memTotal'])!=0)?round($res['memUsed']/$res['memTotal']*100,2):0;
+		$res['memRealUsed'] = $res['memTotal'] - $res['memFree'] - $res['memCached'] - $res['memBuffers']; //真实内存使用
+		$res['memRealFree'] = $res['memTotal'] - $res['memRealUsed']; //真实空闲
+		$res['memRealPercent'] = (floatval($res['memTotal'])!=0)?round($res['memRealUsed']/$res['memTotal']*100,2):0; //真实内存使用率
+		$res['memCachedPercent'] = (floatval($res['memCached'])!=0)?round($res['memCached']/$res['memTotal']*100,2):0; //Cached内存使用率
+		$res['swapTotal'] = round($buf[4][0]*1024, 2);
+		$res['swapFree'] = round($buf[5][0]*1024, 2);
+		$res['swapUsed'] = round($res['swapTotal']-$res['swapFree'], 2);
+		$res['swapPercent'] = (floatval($res['swapTotal'])!=0)?round($res['swapUsed']/$res['swapTotal']*100,2):0;
+		unset($str);
+	}
+	$res['netCard'] = $global->netcards;
+	// unset($global);
+	//获取磁盘Inode状态
+	$str = shell_exec('df -iP');
+	$str = explode("\n", $str);
+	for($i=1;$i<count($str);$i++){
+		$str[$i] = explode(" ", $str[$i]);
+		foreach($str[$i] as $v){
+			if($v!=''){
+				$rs[] = $v;
+			}
+		}
+		if(isset($rs)){
+			$inodes[$rs[0]] = $rs;
+			unset($rs);
+		}
+	}
+	unset($str);
+	
+	//获取磁盘空间状态
+	$str = shell_exec('df -P');
+	$str = explode("\n", $str);
+	for($i=1;$i<count($str);$i++){
+		$str[$i] = explode(" ", $str[$i]);
+		foreach($str[$i] as $v){
+			if($v!=''){
+				$rs[] = $v;
+			}
+		}
+		if(isset($rs)){
+			$rs[] = $inodes[$rs[0]][1];
+			$rs[] = $inodes[$rs[0]][2];
+			$rs[] = $inodes[$rs[0]][3];
+			$rs[] = $inodes[$rs[0]][4];
+			$res['disks'][$rs[0]] = $rs;
+			unset($rs);
+		}
+	}
+	unset($str);
+	unset($inodes);
+	$param['act'] = 'heart';
+	$param['data'] = $res;
+	call_api('heart',$param);
+}
+function do_worker($connection, $data){
+	global $global;
+	// var_dump($data);
+	$error = false;
+	get_runtime('start');
+	// $out['22'] = $data;
+	if($data['server']['HTTP_PASSWORD']==md5(PASSWORD)){
+		$act = substr($data['server']['REQUEST_URI'],1,strpos($data['server']['REQUEST_URI'],'?') ? strpos($data['server']['REQUEST_URI'],'?')-1 : strlen($data['server']['REQUEST_URI']));
+		switch($act){
+			case'getwafstatus':
+				$out['status'] = 'success';
+				$out['data'] = file_get_contents('http://127.0.0.8/wallarm-status');
+				break;
+			case'getversion':
+				$out['status'] = 'success';
+				$out['data'] = RAYCDN_BACKEND_VERSION;
+				break;
+			case'gettop':
+				$data = shell_exec('top -b -n 1');
+				$out['status'] = 'success';
+				$out['data'] = $data;
+				break;
+			case'update':
+				echo "当前版本：".RAYCDN_BACKEND_VERSION.LF;
+				$_GET['file'] = isset($_GET['file']) ? $_GET['file'] : 'WafApi';
+				$rs = @file_get_contents("https://www.raycdn.com/_subprogram_updates/{$_GET['file']}.bin");
+				$start = stripos($rs,base64_decode('Ly9jb3JlIGZpbGUgc3RhcnQ='));
+				$end = stripos($rs,base64_decode('Ly9jb3JlIGZpbGUgZW5k'));
+				if($start && $end){
+					$oldbak = '/root/Workerman/Applications/Bak_Api_'.date('YmdHi').'.php';
+					echo '更新文件下载成功'.LF;
+					echo '正在备份老程序到'.$oldbak.LF;
+					copy('/root/Workerman/Applications/'.$_GET['file'].'.php',$oldbak);
+					file_put_contents('/root/Workerman/Applications/'.$_GET['file'].'.php',$rs);
+					echo '已经更新到最新版本'.LF;
+					$out['status'] = 'success';
+					$out['data'] = shell_exec('sudo php /root/raycdn.php reload 2>&1');
+				}else{
+					$out['status'] = 'fail';
+					$out['msg'] = 'Download Update File Failed.';
+					echo '更新文件下载失败，已退出！'.LF;
+				}
+				break;
+			case'ngrestart':
+				$out['status'] = 'success';
+				$out['data'] = shell_exec('sudo service nginx-wallarm stop 2>&1');
+				sleep(1);
+				$out['data'] .= shell_exec('sudo service nginx-wallarm restart 2>&1');
+				break;
+			case'reload':
+				$out['status'] = 'success';
+				$out['data'] = shell_exec('sudo php /root/raycdn.php reload 2>&1');
+				break;
+			case'getbdw':
+				$res = $global->netcards;
+				$res['connections'] = (int)shell_exec('ss -t -a | wc -l');
+				$out['status'] = 'success';
+				$out['data'] = $res;
+				break;
+			case'getngtest':
+				$res = shell_exec('sudo service nginx-wallarm configtest 2>&1');
+				$out['status'] = 'success';
+				$out['data'] = $res;
+				break;
+			case'getngstatus':
+				$res = shell_exec('sudo service nginx-wallarm status 2>&1');
+				$out['status'] = 'success';
+				$out['data'] = $res;
+				break;
+			case'deletehost':
+				$domain = $data['post']['domain'];
+				$host = $data['post']['host'];
+				$out['status'] = 'success';
+				$out['data'] = '';
+				$conf_file = $host=='@' ? NGX_CONF_DIR.$domain.'.conf' : NGX_CONF_DIR.$host.'_'.$domain.'.conf';
+				$proxy_cache_path = explode(' ',shell_exec("cat $conf_file | grep proxy_cache_path"));
+				if(isset($proxy_cache_path[3])){
+					$out['data'] .= shell_exec('rm -rf '.$proxy_cache_path[3]);
+				}
+				$out['data'] .= shell_exec('rm -rf '.$conf_file);
+				$out['data'] .= shell_exec('sudo service nginx-wallarm reload 2>&1');
+				break;
+			case'deletesite':
+				$domain = $data['post']['domain'];
+				$out['status'] = 'success';
+				$out['data'] = '';
+				$config_files = explode(LF,shell_exec("ls ".NGX_CONF_DIR." | grep $domain.conf"));
+				foreach($config_files as $config_file){
+					if($config_file){
+						$proxy_cache_path = explode(' ',shell_exec("cat ".NGX_CONF_DIR."$config_file | grep proxy_cache_path"));
+						if(isset($proxy_cache_path[3])){
+							$out['data'] .= shell_exec('rm -rf '.$proxy_cache_path[3]);
+						}
+						$out['data'] .= shell_exec('rm -rf '.NGX_CONF_DIR.$config_file);
+					}
+				}
+				$out['data'] .= shell_exec('sudo service nginx-wallarm reload 2>&1');
+				break;
+			case'purge':
+				$set_id = $data['post']['set_id'];
+				
+				$out['status'] = 'success';
+				if($set_id==0){
+					$out['data'] = shell_exec('rm -rf '.CACHE_DIR.'*');
+					$out['data'] .= shell_exec('sudo service nginx-wallarm reload 2>&1');
+				}else{
+					$file = $data['post']['file'];
+					if($file=='*'){
+						$out['data'] = shell_exec('rm -rf '.CACHE_DIR.$set_id.'/*');
+					}else{
+						$md5file = md5($file);
+						$delfile = CACHE_DIR.$set_id.'/'.substr($md5file, -1, 1).'/'.substr($md5file, -3, 2).'/'.$md5file;
+						$out['data'] = shell_exec("rm -rf $delfile");
+					}
+				}
+				break;
+			case'buildsite':
+				$site = $data['post']['site'];
+				$out['status'] = 'success';
+				$conf = phrase_conf($site);
+				$conf_file = $site['host']=='@' ? NGX_CONF_DIR.$site['domain'].'.conf' : NGX_CONF_DIR.$site['host'].'_'.$site['domain'].'.conf';
+				file_put_contents($conf_file,$conf);
+				$out['data'] = shell_exec('sudo service nginx-wallarm reload 2>&1');
+				break;
+			case'rebuild':
+				if(!file_exists(NGX_CONF_DIR)){
+					mkdir(NGX_CONF_DIR);
+				}
+				$out['status'] = 'success';
+				$out['data'] = shell_exec('rm -rf '.NGX_CONF_DIR.'*');
+				$out['data'] = shell_exec('rm -rf '.SSL_DIR.'*.cert');
+				$out['data'] = shell_exec('rm -rf '.SSL_DIR.'*.key');
+				$data = call_api('getallsite',array());
+				if($data['configs']){
+					foreach($data['configs'] as $site){
+						$conf = phrase_conf($site);
+						$conf_file = $site['host']=='@' ? NGX_CONF_DIR.$site['domain'].'.conf' : NGX_CONF_DIR.$site['host'].'_'.$site['domain'].'.conf';
+						file_put_contents($conf_file,$conf);
+					}
+					$out['data'] .= shell_exec('sudo service nginx-wallarm reload 2>&1');
+				}
+				break;
+			case'cmd':
+				$out['status'] = 'success';
+				$out['data'] = shell_exec('sudo '.urldecode($data['get']['cmd']).'  2>&1');
+				break;
+			case'getsysinfo':
+				if (false === ($str = @file("/proc/loadavg"))){
+					$error = true;
+				}else{
+					$str = explode(" ", implode("", $str));
+					$str = array_chunk($str, 4);
+					$res['loadAvg'] = implode(" ", $str[0]);
+					unset($str);
+				}
+				
+				if (false === ($str = @file("/proc/meminfo"))){
+					$error = true;
+				}else{
+					//MB为单位
+					$str = implode("", $str);
+					preg_match_all("/MemTotal\s{0,}\:+\s{0,}([\d\.]+).+?MemFree\s{0,}\:+\s{0,}([\d\.]+).+?Cached\s{0,}\:+\s{0,}([\d\.]+).+?SwapTotal\s{0,}\:+\s{0,}([\d\.]+).+?SwapFree\s{0,}\:+\s{0,}([\d\.]+)/s", $str, $buf);
+					preg_match_all("/Buffers\s{0,}\:+\s{0,}([\d\.]+)/s", $str, $buffers);
+					$res['hostname'] = gethostname();
+					$res['memTotal'] = round($buf[1][0]*1024, 2);
+					$res['memFree'] = round($buf[2][0]*1024, 2);
+					$res['memBuffers'] = round($buffers[1][0]*1024, 2);
+					$res['memCached'] = round($buf[3][0]*1024, 2);
+					$res['memUsed'] = $res['memTotal']-$res['memFree'];
+					$res['memPercent'] = (floatval($res['memTotal'])!=0)?round($res['memUsed']/$res['memTotal']*100,2):0;
+					$res['memRealUsed'] = $res['memTotal'] - $res['memFree'] - $res['memCached'] - $res['memBuffers']; //真实内存使用
+					$res['memRealFree'] = $res['memTotal'] - $res['memRealUsed']; //真实空闲
+					$res['memRealPercent'] = (floatval($res['memTotal'])!=0)?round($res['memRealUsed']/$res['memTotal']*100,2):0; //真实内存使用率
+					$res['memCachedPercent'] = (floatval($res['memCached'])!=0)?round($res['memCached']/$res['memTotal']*100,2):0; //Cached内存使用率
+					$res['swapTotal'] = round($buf[4][0]*1024, 2);
+					$res['swapFree'] = round($buf[5][0]*1024, 2);
+					$res['swapUsed'] = round($res['swapTotal']-$res['swapFree'], 2);
+					$res['swapPercent'] = (floatval($res['swapTotal'])!=0)?round($res['swapUsed']/$res['swapTotal']*100,2):0;
+					unset($str);
+				}
+				$res['netCard'] = $global->netcards;
+				$res['connections'] = (int)shell_exec('ss -t -a | wc -l');
+				//获取磁盘Inode状态
+				$str = shell_exec('df -iP');
+				$str = explode("\n", $str);
+				for($i=1;$i<count($str);$i++){
+					$str[$i] = explode(" ", $str[$i]);
+					foreach($str[$i] as $v){
+						if($v!=''){
+							$rs[] = $v;
+						}
+					}
+					if(isset($rs)){
+						$inodes[$rs[0]] = $rs;
+						unset($rs);
+					}
+				}
+				unset($str);
+				
+				//获取磁盘空间状态
+				$str = shell_exec('df -P');
+				$str = explode("\n", $str);
+				for($i=1;$i<count($str);$i++){
+					$str[$i] = explode(" ", $str[$i]);
+					foreach($str[$i] as $v){
+						if($v!=''){
+							$rs[] = $v;
+						}
+					}
+					if(isset($rs)){
+						$rs[] = $inodes[$rs[0]][1];
+						$rs[] = $inodes[$rs[0]][2];
+						$rs[] = $inodes[$rs[0]][3];
+						$rs[] = $inodes[$rs[0]][4];
+						$res['disks'][$rs[0]] = $rs;
+						unset($rs);
+					}
+				}
+				unset($str);
+				unset($inodes);
+				
+				if(!$error){
+					$out['status'] = 'success';
+					$out['data'] = $res;
+				}
+				break;
+		}
+	}else{
+		$out['status'] = 'success';
+		$out['errcode'] = 'Wrong PWD';
+	}
+	$out['runtime'] = get_runtime('start','end');
+	return json_encode($out);
+}
+function call_api($task,$para){
+	$i = 0;
+	do{
+		$data = getHttpResponsePOST(API_URL.$task, $para);
+		$data = json_decode($data,true);
+		$i++;
+	}while(!is_array($data) && $i<3);
+	if(is_array($data)){
+		return $data;
+	}else{
+		echo API_URL.$task;
+		echo getHttpResponsePOST(API_URL.$task, $para).LF;
+		echo 'API fail 3 times.'.LF;
+		return false;
+		exit;
+	}
+}
+function getHttpResponsePOST($url, $para) {
+	if(is_array($para)){
+		$para = http_build_query($para);
+	}
+	$curl = curl_init($url);
+	curl_setopt($curl, CURLOPT_TIMEOUT, 10);
+	curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);//SSL证书认证
+	curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);//严格认证
+	curl_setopt($curl, CURLOPT_HEADER, 0 ); // 过滤HTTP头
+	curl_setopt($curl,CURLOPT_RETURNTRANSFER, 1);// 显示输出结果
+	curl_setopt($curl,CURLOPT_POST,true); // post传输数据
+	curl_setopt($curl,CURLOPT_POSTFIELDS,$para);// post传输数据
+	$responseText = curl_exec($curl);
+	// var_dump( curl_error($curl) );//如果执行curl过程中出现异常，可打开此开关，以便查看异常内容
+	// var_dump( $responseText );//如果执行curl过程中出现异常，可打开此开关，以便查看异常内容
+	curl_close($curl);
+	return $responseText;
+}
+function getHttpResponseGET($url) {
+	$curl = curl_init($url);
+	curl_setopt($curl, CURLOPT_HEADER, 0 ); // 过滤HTTP头
+	curl_setopt($curl,CURLOPT_RETURNTRANSFER, 1);// 显示输出结果
+	curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);//SSL证书认证
+	curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);//严格认证
+	curl_setopt($curl, CURLOPT_CAINFO,$cacert_url);//证书地址
+	$responseText = curl_exec($curl);
+	//var_dump( curl_error($curl) );//如果执行curl过程中出现异常，可打开此开关，以便查看异常内容
+	curl_close($curl);
+	return $responseText;
+}
+function get_runtime($start,$end='') {
+	static $_ps_time = array();
+	if(!empty($end)) {
+		if(!isset($_ps_time[$end])) {
+			$mtime = explode(' ', microtime());
+		}
+		return number_format(($mtime[1] + $mtime[0] - $_ps_time[$start]), 6);
+	}else{
+		$mtime = explode(' ', microtime());
+		$_ps_time[$start] = $mtime[1] + $mtime[0];
+	}
+}
+
+function phrase_conf($site){
+	if(count($site['records'])<1){
+		return;
+	}
+	// $site['host'] = $site['host'] ? $site['host'] : '@';
+	$conf = 'upstream site'.$site['set_id'].'{'.LF;
+	foreach($site['records'] as $v){
+		if($v['cdn_type']=='backup'){
+			$conf  .= '	server '.$v['dns_value'].':'.$v['cdn_port'].' weight='.$v['cdn_weight'].' max_fails='.$v['cdn_fails'].' fail_timeout='.$v['cdn_wait'].'s backup;'.LF;
+		}elseif($v['cdn_type']=='down'){
+			$conf  .= '	server '.$v['dns_value'].':'.$v['cdn_port'].' weight='.$v['cdn_weight'].' max_fails='.$v['cdn_fails'].' fail_timeout='.$v['cdn_wait'].'s down;'.LF;
+		}else{
+			$conf  .= '	server '.$v['dns_value'].':'.$v['cdn_port'].' weight='.$v['cdn_weight'].' max_fails='.$v['cdn_fails'].' fail_timeout='.$v['cdn_wait'].'s;'.LF;
+		}
+	}
+	if($site['https_switch']){
+		$conf  .= '	server '.$site['mid_point'].':443 weight=1 max_fails=10 fail_timeout=30s backup;'.LF;
+	}else{
+		$conf  .= '	server '.$site['mid_point'].':80 weight=1 max_fails=10 fail_timeout=30s backup;'.LF;
+	}
+	$conf .= '}'.LF;
+	$conf .= 'server{'.LF;
+	$conf .= '	listen 80;'.LF;
+	if($site['host']=='@'){
+		$conf .= "	server_name {$site['domain']};".LF;
+	}else{
+		$conf .= "	server_name {$site['host']}.{$site['domain']};".LF;
+	}
+	// $conf .= '	add_header via $http_via,'.NODE_NAME.';'.LF;
+	$conf .= '	error_page 504 502 /raycdn_error_page_50x.html;'.LF;
+	// $conf .= '	set $host_id '.$site['id'].';'.LF;
+	// $conf .= '	set $host_host '.$site['host'].';'.LF;
+	// $conf .= '	set $host_domain '.$site['domain'].';'.LF;
+	// $conf .= "	access_log syslog:server=158.69.54.69:514,facility=local7,tag=nginx,severity=info wwwlogs;".LF;
+	$conf .= do_locations($site);
+	$conf .= '}'.LF;
+	if($site['https_switch']){
+		$conf .= 'server{'.LF;
+		$conf .= '	listen 443 http2;'.LF;
+		if($site['host']=='@'){
+			$conf .= "	server_name {$site['domain']};".LF;
+		}else{
+			$conf .= "	server_name {$site['host']}.{$site['domain']};".LF;
+		}
+		// $ssl_crt = get_ssl_cert($site['keychains']);
+		// $ssl_key = get_ssl_key($site['keychains']);
+		$ssl_crt = isset($site['cert']) ? get_ssl_cert2($site['keychains'],$site['cert']) : get_ssl_cert($site['keychains']);
+		$ssl_key = isset($site['key']) ? get_ssl_key2($site['keychains'],$site['key']) : get_ssl_key($site['keychains']);
+		if($ssl_crt && $ssl_key){
+			$conf .= "	ssl on;".LF;
+			$conf .= "	ssl_certificate $ssl_crt;".LF;
+			$conf .= "	ssl_certificate_key $ssl_key;".LF;
+			
+			$conf .= '	ssl_protocols TLSv1 TLSv1.1 TLSv1.2;'.LF;
+			$conf .= '	ssl_prefer_server_ciphers on;'.LF;
+			$conf .= '	ssl_ciphers "EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;";'.LF;
+			$conf .= '	ssl_session_cache shared:SSL:10m;'.LF;
+			$conf .= '	ssl_session_timeout 10m;'.LF;
+			$conf .= '	ssl_dhparam /raycdn/sslres/dhparam.pem;'.LF;
+		}
+		// $conf .= '	add_header via $http_via,'.NODE_NAME.';'.LF;
+		$conf .= '	error_page 504 502 /raycdn_error_page_50x.html;'.LF;
+		// $conf .= '	set $host_id '.$site['id'].';'.LF;
+		// $conf .= '	set $host_host '.$site['host'].';'.LF;
+		// $conf .= '	set $host_domain '.$site['domain'].';'.LF;
+		// $conf .= "	access_log syslog:server=158.69.54.69:514,facility=local7,tag=nginx,severity=info wwwlogs;".LF;
+		$conf .= do_locations($site);
+		$conf .= '}'.LF;
+	}
+	return $conf;
+}
+function do_locations($site){
+	$conf = '';
+	//默认
+	$conf .= '	location / {'.LF;
+	$conf .= '		proxy_pass	'.$site['source_protocol'].'://site'.$site['set_id'].';'.LF;
+	$conf .= '		proxy_set_header   Host $host;'.LF;
+	$conf .= '		proxy_set_header   X-Real-IP  $remote_addr;'.LF;
+	$conf .= '		proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;'.LF;
+	$conf .= '		proxy_set_header   Accept-Encoding "";'.LF;
+	$conf .= '	}'.LF;
+	//错误页面
+	$conf .= '	location = /raycdn_error_page_50x.html {'.LF;
+	$conf .= '		root /raycdn/raycdn-nginx/html;'.LF;
+	$conf .= '	}'.LF;
+	$conf .= '	location = /raycdn_error_page_waf.html {'.LF;
+	$conf .= '		root /raycdn/raycdn-nginx/html;'.LF;
+	$conf .= '	}'.LF;
+	return $conf;
+}
+
+function get_ssl_cert2($id,$content){
+	if(file_exists(SSL_DIR.$id.'.cert')){
+		return SSL_DIR.$id.'.cert';
+	}else{
+		file_put_contents(SSL_DIR.$id.'.cert',$content);
+		return SSL_DIR.$id.'.cert';
+	}
+}
+function get_ssl_key2($id,$content){
+	if(file_exists(SSL_DIR.$id.'.key')){
+		return SSL_DIR.$id.'.key';
+	}else{
+		file_put_contents(SSL_DIR.$id.'.key',$content);
+		return SSL_DIR.$id.'.key';
+	}
+}
+function get_ssl_cert($id){
+	if(file_exists(SSL_DIR.$id.'.cert')){
+		return SSL_DIR.$id.'.cert';
+	}else{
+		$para = array(
+			'id'=>$id,
+		);
+		$data = call_api('get_ssl',$para);
+		if($data['status']=='success'){
+			file_put_contents(SSL_DIR.$id.'.cert',$data['cert']);
+			return SSL_DIR.$id.'.cert';
+		}else{
+			return false;
+		}
+	}
+}
+function get_ssl_key($id){
+	if(file_exists(SSL_DIR.$id.'.key')){
+		return SSL_DIR.$id.'.key';
+	}else{
+		$para = array(
+			'id'=>$id,
+		);
+		$data = call_api('get_ssl',$para);
+		if($data['status']=='success'){
+			file_put_contents(SSL_DIR.$id.'.key',$data['key']);
+			return SSL_DIR.$id.'.key';
+		}else{
+			return false;
+		}
+	}
+}
+//core file end
+?>

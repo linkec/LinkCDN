@@ -1,0 +1,651 @@
+<?php
+$version='1.72';//version
+error_reporting(E_ALL ^ E_NOTICE);
+@ini_set('display_errors', 'On');
+
+if(function_exists('date_default_timezone_set')){
+	@date_default_timezone_set('Asia/Shanghai');
+}
+
+$need_reload = false;
+define('LF',"\r\n");
+define('NGX_CONF_DIR','/raycdn/cdnconf/');
+define('SSL_DIR','/raycdn/sslres/');
+define('NODE_NAME','GTKY1');
+$api_url = 'https://www.raycdn.com/FFGKBMQ3AJEQHA3S/';
+
+$need_do_tasks = array();
+// $para = array(
+	// 'node_id'=>3,
+// );
+// linklog('');
+get_program_update($version);
+// exec("rm -rf ".NGX_CONF_DIR.'*_*.conf');
+exec("rm -rf /root/bak_raycdn*");
+$data = call_api('get_tasks', array());
+if($data['status']=='success'){
+	if($data['tasks']){
+		foreach($data['tasks'] as $tasks){
+			$need_do_tasks[$tasks['status']]['id'][] = $tasks['set_id'];
+		}
+	}
+}
+$data = call_api('get_tasks2', array());
+// var_dump($data);exit;
+if($data['status']=='success'){
+	if($data['tasks']){
+		foreach($data['tasks'] as $tasks){
+			$need_do_tasks[$tasks['task']][] = $tasks;
+		}
+	}
+}
+// var_dump($need_do_tasks);
+foreach($need_do_tasks as $task_type=>$tasks){
+	// var_dump($tasks);
+	switch($task_type){
+		case'update':
+			$ids = implode(',',$tasks['id']);
+			do_update($ids);
+			break;
+		case'delete':
+			$ids = implode(',',$tasks['id']);
+			do_delete($ids);
+			break;
+		case'delete2':
+			foreach($tasks as $v){
+				$v['data'] = explode(',',$v['data']);
+				if($v['data'][1]){
+					//删除单个主机
+					// exec("rm -rf ".NGX_CONF_DIR.$v['data'][0].'_'.$v['data'][1].'.conf');
+					exec("rm -rf ".NGX_CONF_DIR.$v['data'][0].'_'.$v['data'][1].'.conf');
+					$need_reload = true;
+				}else{
+					//删除全域
+					exec("rm -rf ".NGX_CONF_DIR.$v['data'][0].'_*.conf');
+					$need_reload = true;
+				}
+			}
+			break;
+		case'purge':
+			// var_dump($tasks);
+			foreach($tasks as $v){
+				$v = explode(',',$v['data']);
+				if($v[2]=='*'){
+					$v[0] = $v[0]=='@' ? '\@':$v[0];
+					$v['dir'] = "/raycdn/cache/{$v[0]}_{$v[1]}/*";
+					// $v['file'] = $v['dir'];
+					exec("rm -rf {$v['dir']}",$rs);
+					var_dump($rs);
+				}else{
+					$v['md5_file'] = md5('/'.$v[2]);
+					$v[0] = $v[0]=='@' ? '\@':$v[0];
+					$v['dir'] = "/raycdn/cache/{$v[0]}_{$v[1]}";
+					$v['dir_1'] = substr($v['md5_file'], -3, 2);
+					$v['dir_2'] = substr($v['md5_file'], -1, 1);
+					$v['file'] = $v['dir'].'/'.$v['dir_2'].'/'.$v['dir_1'].'/'.$v['md5_file'];
+					@unlink($v['file']);
+				}
+			}
+			break;
+	}
+}
+if($need_reload){
+	`sudo service nginxd reload`;
+}
+function get_program_update($version){
+	$data = call_api('get_version', array());
+	if($data['version']!=$version){
+		echo "当前版本：{$version}".LF;
+		echo "线上版本：{$data['version']}".LF;
+		$rs = file_get_contents("https://www.raycdn.com/_subprogram_updates/raycdn.bin");
+		$start = stripos($rs,base64_decode('JHZlcnNpb249'));
+		$end = stripos($rs,base64_decode('Ly9lbmQ='));
+		if($start && $end){
+			$oldbak = 'bak_raycdn'.date('YmdHi').'.php';
+			echo '更新文件下载成功'.LF;
+			echo '正在备份老程序到'.$oldbak.LF;
+			copy('raycdn.php',$oldbak);
+			file_put_contents('raycdn.php',$rs);
+			echo '已经更新到最新版本'.LF;
+		}else{
+			echo '更新文件下载失败，已退出！'.LF;
+		}
+		// preg_match($rs);
+		// file_get_contents(
+		exit;
+	}
+}
+function do_delete($ids){
+	global $api_url,$need_reload;
+	$para = array(
+		'ids'=>$ids,
+	);
+	$data = call_api('get_configs', $para);
+	if($data['status']=='success'){
+		if($data['configs']){
+			foreach($data['configs'] as $site){
+				$site['host'] = $site['host']=='@' ? '':$site['host'];
+				unlink(NGX_CONF_DIR.$site['site_id'].'_'.$site['host'].'.conf');
+				$need_reload = true;
+				// echo $conf;
+			}
+		}
+	}
+}
+function do_update($ids){
+	global $api_url,$need_reload;
+	$para = array(
+		'ids'=>$ids,
+	);
+	$data = call_api('get_configs', $para);
+	// var_dump($ids);
+	// exit;
+	if($data['status']=='success'){
+		if($data['configs']){
+			foreach($data['configs'] as $site){
+				$site['host'] = $site['host']=='@' ? '':$site['host'];
+				$conf = phrase_conf($site);
+				file_put_contents(NGX_CONF_DIR.$site['site_id'].'_'.$site['host'].'.conf',$conf);
+				$need_reload = true;
+				// echo $conf;
+			}
+		}
+	}
+	// echo $data;
+}
+function phrase_conf($site){
+	if(count($site['records'])<1){
+		return;
+	}
+	$site['host'] = $site['host'] ? $site['host'] : '@';
+	$conf .= 'upstream '.$site['site_id'].'_'.$site['host'].'{'.LF;
+	if($site['waf_pro']==0){
+		foreach($site['records'] as $v){
+			if($v['cdn_type']=='backup'){
+				$conf  .= '	server '.$v['dns_value'].':'.$v['cdn_port'].' weight='.$v['cdn_weight'].' max_fails='.$v['cdn_fails'].' fail_timeout='.$v['cdn_wait'].'s backup;'.LF;
+			}elseif($v['cdn_type']=='down'){
+				$conf  .= '	server '.$v['dns_value'].':'.$v['cdn_port'].' weight='.$v['cdn_weight'].' max_fails='.$v['cdn_fails'].' fail_timeout='.$v['cdn_wait'].'s down;'.LF;
+			}else{
+				$conf  .= '	server '.$v['dns_value'].':'.$v['cdn_port'].' weight='.$v['cdn_weight'].' max_fails='.$v['cdn_fails'].' fail_timeout='.$v['cdn_wait'].'s;'.LF;
+			}
+		}
+		if($site['https_switch']){
+			$conf  .= '	server '.$site['mid_point'].':443 weight=1 max_fails=3 fail_timeout=30s backup;'.LF;
+		}else{
+			$conf  .= '	server '.$site['mid_point'].':80 weight=1 max_fails=3 fail_timeout=30s backup;'.LF;
+		}
+	}else{
+		if($site['https_switch']){
+			$conf  .= '	server '.$site['waf_point'].':443 weight=1 max_fails=3 fail_timeout=30s;'.LF;
+		}else{
+			$conf  .= '	server '.$site['waf_point'].':80 weight=1 max_fails=3 fail_timeout=30s;'.LF;
+		}
+		foreach($site['records'] as $v){
+			$conf  .= '	server '.$v['dns_value'].':'.$v['cdn_port'].' weight='.$v['cdn_weight'].' max_fails='.$v['cdn_fails'].' fail_timeout='.$v['cdn_wait'].'s backup;'.LF;
+		}
+		if($site['https_switch']){
+			$conf  .= '	server '.$site['mid_point'].':443 weight=1 max_fails=3 fail_timeout=30s backup;'.LF;
+		}else{
+			$conf  .= '	server '.$site['mid_point'].':80 weight=1 max_fails=3 fail_timeout=30s backup;'.LF;
+		}
+	}
+	$conf .= '}'.LF;
+	$conf .= "proxy_cache_path   /raycdn/cache/{$site['host']}_{$site['domain']} levels=1:2 keys_zone=CACHE{$site['host']}_{$site['domain']}:8m inactive=7d max_size=1024m;".LF;
+	if($site['https_only']){
+		$conf .= 'server{'.LF;
+		$conf .= '	listen 80;'.LF;
+		if($site['host']=='@'){
+			$conf .= "	server_name {$site['domain']};".LF;
+		}else{
+			$conf .= "	server_name {$site['host']}.{$site['domain']};".LF;
+		}
+		$conf .= '	rewrite ^(.*)$  https://$host$1 permanent;'.LF;
+		$conf .= "}".LF;
+		
+	}else{
+		$conf .= 'server{'.LF;
+		$conf .= '	listen 80;'.LF;
+		if($site['host']=='@'){
+			$conf .= "	server_name {$site['domain']};".LF;
+		}else{
+			$conf .= "	server_name {$site['host']}.{$site['domain']};".LF;
+		}
+		// $conf .= '	add_header via $http_via,'.NODE_NAME.';'.LF;
+		$conf .= '	error_page 504 502 /raycdn_error_page_50x.html;'.LF;
+		$conf .= '	set $host_id '.$site['id'].';'.LF;
+		$conf .= '	set $host_host '.$site['host'].';'.LF;
+		$conf .= '	set $host_domain '.$site['domain'].';'.LF;
+		$conf .= "	access_log syslog:server=158.69.54.69:514,facility=local7,tag=nginx,severity=info wwwlogs;".LF;
+		$conf .= '	add_header ray-cache $upstream_cache_status;'.LF;
+		//pagespeed 配置待定
+		if($site['pagespeed_mode']==1){
+			//极速模式
+			$conf .= '	pagespeed on;'.LF;
+			$conf .= '	pagespeed FileCachePath /raycdn/cache/ngx_pagespeed_cache;'.LF;
+			$conf .= '	pagespeed XHeaderValue "RayCDN";'.LF;
+			$conf .= '	location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {'.LF;
+			$conf .= '	  add_header "" "";'.LF;
+			$conf .= '	}'.LF;
+			$conf .= '	location ~ "^/pagespeed_static/" { }'.LF;
+			$conf .= '	location ~ "^/ngx_pagespeed_beacon$" { }'.LF;
+			$conf .= '	pagespeed RewriteLevel CoreFilters;'.LF;
+		}elseif($site['pagespeed_mode']==2){
+			//压缩模式
+			$conf .= '	pagespeed on;'.LF;
+			$conf .= '	pagespeed FileCachePath /raycdn/cache/ngx_pagespeed_cache;'.LF;
+			$conf .= '	pagespeed XHeaderValue "RayCDN";'.LF;
+			$conf .= '	location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {'.LF;
+			$conf .= '	  add_header "" "";'.LF;
+			$conf .= '	}'.LF;
+			$conf .= '	location ~ "^/pagespeed_static/" { }'.LF;
+			$conf .= '	location ~ "^/ngx_pagespeed_beacon$" { }'.LF;
+			$conf .= '	pagespeed RewriteLevel OptimizeForBandwidth;'.LF;
+		}elseif($site['pagespeed_mode']==3){
+			if($site['pagespeed_css'] || $site['pagespeed_js'] || $site['pagespeed_image']){
+				$conf .= '	pagespeed on;'.LF;
+				$conf .= '	pagespeed FileCachePath /raycdn/cache/ngx_pagespeed_cache;'.LF;
+				$conf .= '	pagespeed XHeaderValue "RayCDN";'.LF;
+				$conf .= '	location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {'.LF;
+				$conf .= '	  add_header "" "";'.LF;
+				$conf .= '	}'.LF;
+				$conf .= '	location ~ "^/pagespeed_static/" { }'.LF;
+				$conf .= '	location ~ "^/ngx_pagespeed_beacon$" { }'.LF;
+				$conf .= '	pagespeed RewriteLevel PassThrough;'.LF;
+				$conf .= '	pagespeed EnableFilters collapse_whitespace;'.LF;
+				$conf .= '	pagespeed EnableFilters remove_comments;'.LF;
+				$conf .= '	pagespeed EnableFilters elide_attributes;'.LF;
+				$conf .= '	pagespeed EnableFilters extend_cache;'.LF;
+				$conf .= '	pagespeed EnableFilters insert_dns_prefetch;'.LF;
+			}
+			if($site['pagespeed_css']){
+				$conf .= '	pagespeed EnableFilters combine_css;'.LF;
+				$conf .= '	pagespeed EnableFilters rewrite_css;'.LF;
+				$conf .= '	pagespeed EnableFilters prioritize_critical_css;'.LF;
+				$conf .= '	pagespeed EnableFilters move_css_to_head;'.LF;
+			}
+			if($site['pagespeed_js']){
+				$conf .= '	pagespeed EnableFilters combine_javascript;'.LF;
+				$conf .= '	pagespeed EnableFilters rewrite_javascript;'.LF;
+			}
+			if($site['pagespeed_image']){
+				$conf .= '	pagespeed LazyloadImagesAfterOnload off;'.LF;
+				$conf .= '	pagespeed EnableFilters lazyload_images;'.LF;
+				$conf .= '	pagespeed EnableFilters resize_mobile_images;'.LF;
+				$conf .= '	pagespeed EnableFilters rewrite_images;'.LF;
+			}
+		}
+		$conf .= '	more_clear_headers vary;'.LF;
+		if($site['static_compress_gzip']){
+			$conf .= '	gzip  on;'.LF;
+		}else{
+			$conf .= '	gzip  off;'.LF;
+		}
+		if($site['static_compress_brotli']){
+			$conf .= '	brotli on;'.LF;
+		}else{
+			$conf .= '	brotli off;'.LF;
+		}
+		$conf .= do_locations($site);
+		$conf .= '}'.LF;
+	}
+	if($site['https_switch']){
+		$conf .= 'server{'.LF;
+		$conf .= '	listen 443 http2;'.LF;
+		if($site['host']=='@'){
+			$conf .= "	server_name {$site['domain']};".LF;
+		}else{
+			$conf .= "	server_name {$site['host']}.{$site['domain']};".LF;
+		}
+		$conf .= '	error_page 504 502 /raycdn_error_page_50x.html;'.LF;
+		$conf .= '	set $host_id '.$site['id'].';'.LF;
+		$conf .= '	set $host_host '.$site['host'].';'.LF;
+		$conf .= '	set $host_domain '.$site['domain'].';'.LF;
+		$conf .= "	access_log syslog:server=158.69.54.69:514,facility=local7,tag=nginx,severity=info wwwlogs;".LF;
+		$conf .= "	ssl on;".LF;
+		$ssl_crt = get_ssl_cert($site['keychains']);
+		$ssl_key = get_ssl_key($site['keychains']);
+		$conf .= "	ssl_certificate $ssl_crt;".LF;
+		$conf .= "	ssl_certificate_key $ssl_key;".LF;
+		
+		$conf .= '	ssl_protocols TLSv1 TLSv1.1 TLSv1.2;'.LF;
+		$conf .= '	ssl_prefer_server_ciphers on;'.LF;
+		$conf .= '	ssl_ciphers "EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;";'.LF;
+		$conf .= '	ssl_session_cache shared:SSL:10m;'.LF;
+		$conf .= '	ssl_session_timeout 10m;'.LF;
+		$conf .= '	ssl_dhparam /raycdn/sslres/dhparam.pem;'.LF;
+		
+		$conf .= '	more_set_headers "ray-cache:$upstream_cache_status";'.LF;
+		$conf .= '	more_set_headers "Strict-Transport-Security:max-age=31536000";'.LF;
+		$conf .= '	more_set_headers \'X-Frame-Options:SAMEORIGIN\';'.LF;
+		$conf .= '	more_set_headers \'X-XSS-Protection:1; mode=block\';'.LF;
+		$conf .= '	more_set_headers "X-Content-Type-Options:nosniff";'.LF;
+		
+		//pagespeed 配置待定
+		if($site['pagespeed_mode']==1){
+			//极速模式
+			$conf .= '	pagespeed on;'.LF;
+			$conf .= '	pagespeed FileCachePath /raycdn/cache/ngx_pagespeed_cache;'.LF;
+			$conf .= '	pagespeed XHeaderValue "RayCDN";'.LF;
+			$conf .= '	location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {'.LF;
+			$conf .= '	  add_header "" "";'.LF;
+			$conf .= '	}'.LF;
+			$conf .= '	location ~ "^/pagespeed_static/" { }'.LF;
+			$conf .= '	location ~ "^/ngx_pagespeed_beacon$" { }'.LF;
+			$conf .= '	pagespeed RewriteLevel CoreFilters;'.LF;
+		}elseif($site['pagespeed_mode']==2){
+			//压缩模式
+			$conf .= '	pagespeed on;'.LF;
+			$conf .= '	pagespeed FileCachePath /raycdn/cache/ngx_pagespeed_cache;'.LF;
+			$conf .= '	pagespeed XHeaderValue "RayCDN";'.LF;
+			$conf .= '	location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {'.LF;
+			$conf .= '	  add_header "" "";'.LF;
+			$conf .= '	}'.LF;
+			$conf .= '	location ~ "^/pagespeed_static/" { }'.LF;
+			$conf .= '	location ~ "^/ngx_pagespeed_beacon$" { }'.LF;
+			$conf .= '	pagespeed RewriteLevel OptimizeForBandwidth;'.LF;
+		}elseif($site['pagespeed_mode']==3){
+			$conf .= '	pagespeed on;'.LF;
+			$conf .= '	pagespeed FileCachePath /raycdn/cache/ngx_pagespeed_cache;'.LF;
+			$conf .= '	pagespeed XHeaderValue "RayCDN";'.LF;
+			$conf .= '	location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {'.LF;
+			$conf .= '	  add_header "" "";'.LF;
+			$conf .= '	}'.LF;
+			$conf .= '	location ~ "^/pagespeed_static/" { }'.LF;
+			$conf .= '	location ~ "^/ngx_pagespeed_beacon$" { }'.LF;
+			$conf .= '	pagespeed RewriteLevel PassThrough;'.LF;
+			$conf .= '	pagespeed EnableFilters collapse_whitespace;'.LF;
+			$conf .= '	pagespeed EnableFilters remove_comments;'.LF;
+			$conf .= '	pagespeed EnableFilters elide_attributes;'.LF;
+			$conf .= '	pagespeed EnableFilters extend_cache;'.LF;
+			$conf .= '	pagespeed EnableFilters insert_dns_prefetch;'.LF;
+			
+			if($site['pagespeed_css']){
+				$conf .= '	pagespeed EnableFilters combine_css;'.LF;
+				$conf .= '	pagespeed EnableFilters rewrite_css;'.LF;
+				$conf .= '	pagespeed EnableFilters prioritize_critical_css;'.LF;
+				$conf .= '	pagespeed EnableFilters move_css_to_head;'.LF;
+			}
+			if($site['pagespeed_js']){
+				$conf .= '	pagespeed EnableFilters combine_javascript;'.LF;
+				$conf .= '	pagespeed EnableFilters rewrite_javascript;'.LF;
+			}
+			if($site['pagespeed_image']){
+				$conf .= '	pagespeed LazyloadImagesAfterOnload off;'.LF;
+				$conf .= '	pagespeed EnableFilters lazyload_images;'.LF;
+				$conf .= '	pagespeed EnableFilters resize_mobile_images;'.LF;
+				$conf .= '	pagespeed EnableFilters rewrite_images;'.LF;
+			}
+		}
+		$conf .= '	more_clear_headers vary;'.LF;
+		if($site['static_compress_gzip']){
+			$conf .= '	gzip  on;'.LF;
+		}else{
+			$conf .= '	gzip  off;'.LF;
+		}
+		if($site['static_compress_brotli']){
+			$conf .= '	brotli on;'.LF;
+		}else{
+			$conf .= '	brotli off;'.LF;
+		}
+		
+		$conf .= do_locations($site);
+		$conf .= '}'.LF;
+	}
+	return $conf;
+}
+function do_locations($site){
+	if(!$site['statics_cache_switch'] && $site['browser_cache_switch']){
+		$conf .= '	location ~* \.(png|jpg|jpeg|gif|ico|js|css|svg|font|ttf|woff2|swf|bmp)$ {'.LF;
+		$conf .= '		expires '.$site['browser_cache_time'].$site['browser_cache_unit'].';'.LF;
+		$conf .= '	}'.LF;
+	}elseif($site['statics_cache_switch'] && $site['browser_cache_switch']){
+		//缓存JS/CSS/图片
+		$conf .= '	location ~* \.(png|jpg|jpeg|gif|ico|js|css|svg|font|ttf|woff2|swf|bmp)$ {'.LF;
+		$conf .= '		expires '.$site['browser_cache_time'].$site['browser_cache_unit'].';'.LF;
+		$conf .= '		proxy_set_header   Host $host;'.LF;
+		$conf .= '		proxy_set_header   X-Real-IP  $remote_addr;'.LF;
+		$conf .= '		proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;'.LF;
+		$conf .= "		proxy_cache CACHE{$site['host']}_{$site['domain']};".LF;
+		$conf .= '		proxy_cache_key $request_uri;'.LF;
+		if($site['statics_cache_anyway']){
+			$conf .= '		proxy_ignore_headers X-Accel-Expires Expires Cache-Control Set-Cookie;'.LF;
+		}
+		if($site['source_protocol']=='https'){
+			$conf .= '		subs_filter_types text/plain text/css application/javascript application/x-javascript text/javascript;'.LF;
+			$conf .= '		subs_filter http://$host https://$host;'.LF;
+		}
+		$conf .= '		proxy_cache_valid 200 '.$site['statics_cache_time'].$site['statics_cache_unit'].';'.LF;
+		$conf .= '		proxy_cache_valid any 10s;'.LF;
+		$conf .= '		proxy_pass	'.$site['source_protocol'].'://'.$site['site_id'].'_'.$site['host'].';'.LF;
+		$conf .= '	}'.LF;
+	}elseif($site['statics_cache_switch']){
+		$conf .= '	location ~* \.(png|jpg|jpeg|gif|ico|js|css|svg|font|ttf|woff2|swf|bmp)$ {'.LF;
+		$conf .= '		proxy_set_header   Host $host;'.LF;
+		$conf .= '		proxy_set_header   X-Real-IP  $remote_addr;'.LF;
+		$conf .= '		proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;'.LF;
+		$conf .= "		proxy_cache CACHE{$site['host']}_{$site['domain']};".LF;
+		$conf .= '		proxy_cache_key $request_uri;'.LF;
+		if($site['statics_cache_anyway']){
+			$conf .= '		proxy_ignore_headers X-Accel-Expires Expires Cache-Control Set-Cookie;'.LF;
+		}
+		if($site['source_protocol']=='https'){
+			$conf .= '		subs_filter_types text/plain text/css application/javascript application/x-javascript text/javascript;'.LF;
+			$conf .= '		subs_filter http://$host https://$host;'.LF;
+		}
+		$conf .= '		proxy_cache_valid 200 '.$site['statics_cache_time'].$site['statics_cache_unit'].';'.LF;
+		$conf .= '		proxy_cache_valid any 10s;'.LF;
+		$conf .= '		proxy_pass	'.$site['source_protocol'].'://'.$site['site_id'].'_'.$site['host'].';'.LF;
+		$conf .= '	}'.LF;
+	}
+	//缓存HTML
+	if($site['html_cache_switch']){
+		$conf .= '	location ~* \.(htm|html)$ {'.LF;
+		if($site['anti_cc']==2){
+			$anti_html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><title>RayCDN Cloud Security System</title><style>.spinner{margin:400px auto 50px auto;width:40px;height:40px;position:relative}.check{text-align:center}.cube1,.cube2{background-color:#333;width:15px;height:15px;position:absolute;top:0;left:0;-webkit-animation:sk-cubemove 1.8s infinite ease-in-out;animation:sk-cubemove 1.8s infinite ease-in-out}.cube2{-webkit-animation-delay:-.9s;animation-delay:-.9s}@-webkit-keyframes sk-cubemove{25%{-webkit-transform:translateX(42px) rotate(-90deg) scale(0.5)}50%{-webkit-transform:translateX(42px) translateY(42px) rotate(-180deg)}75%{-webkit-transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5)}100%{-webkit-transform:rotate(-360deg)}}@keyframes sk-cubemove{25%{transform:translateX(42px) rotate(-90deg) scale(0.5);-webkit-transform:translateX(42px) rotate(-90deg) scale(0.5)}50%{transform:translateX(42px) translateY(42px) rotate(-179deg);-webkit-transform:translateX(42px) translateY(42px) rotate(-179deg)}50.1%{transform:translateX(42px) translateY(42px) rotate(-180deg);-webkit-transform:translateX(42px) translateY(42px) rotate(-180deg)}75%{transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5);-webkit-transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5)}100%{transform:rotate(-360deg);-webkit-transform:rotate(-360deg)}}</style></head><body><div class='spinner'><div class='cube1'></div><div class='cube2'></div></div><div class='check'><image style='height:30px' src='https://www.raycdn.com/demo/img/rcs.png'></image></div><script type='text/javascript'>document.cookie='shieldval=\$anticccode;path=/';setTimeout('window.location.reload()',3000);</script><iframe src='https://www.raycdn.com/inc/cctracker.php'style='display:none;'></iframe></body></html>";
+			$conf.='		more_set_headers "Content-Type:text/html";'.LF;
+			$conf.='		set $anticccode "hotiisanticc$clientRealIp";'.LF;
+			$conf.='		if ( $uri !~* .(png|jpg|jpeg|gif|ico|js|css) ){'.LF;
+			$conf.='			set $check "${check}1";'.LF;
+			$conf.="		}\n";
+			$conf.='		if ($cookie_shieldval != $anticccode){'.LF;
+			$conf.='			set $check "${check}1";'.LF;
+			$conf.="		}\n";
+			$conf.='		if ($check = 11){'.LF;
+			$conf.="			return 502 \"$anti_html\";".LF;
+			$conf.="		}".LF;
+		}
+		$conf .= '		proxy_set_header   Host $host;'.LF;
+		$conf .= '		proxy_set_header   X-Real-IP  $remote_addr;'.LF;
+		$conf .= '		proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;'.LF;
+		$conf .= "		proxy_cache CACHE{$site['host']}_{$site['domain']};".LF;
+		$conf .= '		proxy_cache_key $request_uri;'.LF;
+		if($site['html_cache_anyway']){
+			$conf .= '		proxy_ignore_headers X-Accel-Expires Expires Cache-Control Set-Cookie;'.LF;
+		}
+		if($site['source_protocol']=='https'){
+			$conf .= '		subs_filter_types text/plain text/css application/javascript application/x-javascript text/javascript;'.LF;
+			$conf .= '		subs_filter http://$host https://$host;'.LF;
+		}
+		$conf .= '		proxy_cache_valid 200 '.$site['html_cache_time'].$site['html_cache_unit'].';'.LF;
+		$conf .= '		proxy_cache_valid any 10s;'.LF;
+		$conf .= '		proxy_pass	'.$site['source_protocol'].'://'.$site['site_id'].'_'.$site['host'].';'.LF;
+		$conf .= '	}'.LF;
+	}
+	//缓存首页
+	if($site['index_cache_switch']){
+		$conf .= '	location = / {'.LF;
+		if($site['anti_cc']==2){
+			$anti_html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><title>RayCDN Cloud Security System</title><style>.spinner{margin:400px auto 50px auto;width:40px;height:40px;position:relative}.check{text-align:center}.cube1,.cube2{background-color:#333;width:15px;height:15px;position:absolute;top:0;left:0;-webkit-animation:sk-cubemove 1.8s infinite ease-in-out;animation:sk-cubemove 1.8s infinite ease-in-out}.cube2{-webkit-animation-delay:-.9s;animation-delay:-.9s}@-webkit-keyframes sk-cubemove{25%{-webkit-transform:translateX(42px) rotate(-90deg) scale(0.5)}50%{-webkit-transform:translateX(42px) translateY(42px) rotate(-180deg)}75%{-webkit-transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5)}100%{-webkit-transform:rotate(-360deg)}}@keyframes sk-cubemove{25%{transform:translateX(42px) rotate(-90deg) scale(0.5);-webkit-transform:translateX(42px) rotate(-90deg) scale(0.5)}50%{transform:translateX(42px) translateY(42px) rotate(-179deg);-webkit-transform:translateX(42px) translateY(42px) rotate(-179deg)}50.1%{transform:translateX(42px) translateY(42px) rotate(-180deg);-webkit-transform:translateX(42px) translateY(42px) rotate(-180deg)}75%{transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5);-webkit-transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5)}100%{transform:rotate(-360deg);-webkit-transform:rotate(-360deg)}}</style></head><body><div class='spinner'><div class='cube1'></div><div class='cube2'></div></div><div class='check'><image style='height:30px' src='https://www.raycdn.com/demo/img/rcs.png'></image></div><script type='text/javascript'>document.cookie='shieldval=\$anticccode;path=/';setTimeout('window.location.reload()',3000);</script><iframe src='https://www.raycdn.com/inc/cctracker.php'style='display:none;'></iframe></body></html>";
+			$conf.='		more_set_headers "Content-Type:text/html";'.LF;
+			$conf.='		set $anticccode "hotiisanticc$clientRealIp";'.LF;
+			$conf.='		if ( $uri !~* .(png|jpg|jpeg|gif|ico|js|css) ){'.LF;
+			$conf.='			set $check "${check}1";'.LF;
+			$conf.="		}\n";
+			$conf.='		if ($cookie_shieldval != $anticccode){'.LF;
+			$conf.='			set $check "${check}1";'.LF;
+			$conf.="		}\n";
+			$conf.='		if ($check = 11){'.LF;
+			$conf.="			return 502 \"$anti_html\";".LF;
+			$conf.="		}".LF;
+		}
+		$conf .= '		proxy_set_header   Host $host;'.LF;
+		$conf .= '		proxy_set_header   X-Real-IP  $remote_addr;'.LF;
+		$conf .= '		proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;'.LF;
+		$conf .= "		proxy_cache CACHE{$site['host']}_{$site['domain']};".LF;
+		$conf .= '		proxy_cache_key $request_uri;'.LF;
+		if($site['index_cache_anyway']){
+			$conf .= '		proxy_ignore_headers X-Accel-Expires Expires Cache-Control Set-Cookie;'.LF;
+		}
+		if($site['source_protocol']=='https'){
+			$conf .= '		subs_filter_types text/plain text/css application/javascript application/x-javascript text/javascript;'.LF;
+			$conf .= '		subs_filter http://$host https://$host;'.LF;
+		}
+		$conf .= '		proxy_cache_valid 200 '.$site['index_cache_time'].$site['index_cache_unit'].';'.LF;
+		$conf .= '		proxy_cache_valid any 10s;'.LF;
+		$conf .= '		proxy_pass	'.$site['source_protocol'].'://'.$site['site_id'].'_'.$site['host'].';'.LF;
+		$conf .= '	}'.LF;
+	}
+	if($site['dir_cache_switch']){
+		$conf .= '	location ~ / {'.LF;
+		if($site['anti_cc']==2){
+			$anti_html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><title>RayCDN Cloud Security System</title><style>.spinner{margin:400px auto 50px auto;width:40px;height:40px;position:relative}.check{text-align:center}.cube1,.cube2{background-color:#333;width:15px;height:15px;position:absolute;top:0;left:0;-webkit-animation:sk-cubemove 1.8s infinite ease-in-out;animation:sk-cubemove 1.8s infinite ease-in-out}.cube2{-webkit-animation-delay:-.9s;animation-delay:-.9s}@-webkit-keyframes sk-cubemove{25%{-webkit-transform:translateX(42px) rotate(-90deg) scale(0.5)}50%{-webkit-transform:translateX(42px) translateY(42px) rotate(-180deg)}75%{-webkit-transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5)}100%{-webkit-transform:rotate(-360deg)}}@keyframes sk-cubemove{25%{transform:translateX(42px) rotate(-90deg) scale(0.5);-webkit-transform:translateX(42px) rotate(-90deg) scale(0.5)}50%{transform:translateX(42px) translateY(42px) rotate(-179deg);-webkit-transform:translateX(42px) translateY(42px) rotate(-179deg)}50.1%{transform:translateX(42px) translateY(42px) rotate(-180deg);-webkit-transform:translateX(42px) translateY(42px) rotate(-180deg)}75%{transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5);-webkit-transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5)}100%{transform:rotate(-360deg);-webkit-transform:rotate(-360deg)}}</style></head><body><div class='spinner'><div class='cube1'></div><div class='cube2'></div></div><div class='check'><image style='height:30px' src='https://www.raycdn.com/demo/img/rcs.png'></image></div><script type='text/javascript'>document.cookie='shieldval=\$anticccode;path=/';setTimeout('window.location.reload()',3000);</script><iframe src='https://www.raycdn.com/inc/cctracker.php'style='display:none;'></iframe></body></html>";
+			$conf.='		more_set_headers "Content-Type:text/html";'.LF;
+			$conf.='		set $anticccode "hotiisanticc$clientRealIp";'.LF;
+			$conf.='		if ( $uri !~* .(png|jpg|jpeg|gif|ico|js|css) ){'.LF;
+			$conf.='			set $check "${check}1";'.LF;
+			$conf.="		}\n";
+			$conf.='		if ($cookie_shieldval != $anticccode){'.LF;
+			$conf.='			set $check "${check}1";'.LF;
+			$conf.="		}\n";
+			$conf.='		if ($check = 11){'.LF;
+			$conf.="			return 502 \"$anti_html\";".LF;
+			$conf.="		}".LF;
+		}
+		$conf .= '		proxy_set_header   Host $host;'.LF;
+		$conf .= '		proxy_set_header   X-Real-IP  $remote_addr;'.LF;
+		$conf .= '		proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;'.LF;
+		$conf .= "		proxy_cache CACHE{$site['host']}_{$site['domain']};".LF;
+		$conf .= '		proxy_cache_key $request_uri;'.LF;
+		if($site['dir_cache_anyway']){
+			$conf .= '		proxy_ignore_headers X-Accel-Expires Expires Cache-Control Set-Cookie;'.LF;
+		}
+		if($site['source_protocol']=='https'){
+			$conf .= '		subs_filter_types text/plain text/css application/javascript application/x-javascript text/javascript;'.LF;
+			$conf .= '		subs_filter http://$host https://$host;'.LF;
+		}
+		$conf .= '		proxy_cache_valid 200 '.$site['dir_cache_time'].$site['dir_cache_unit'].';'.LF;
+		$conf .= '		proxy_cache_valid any 10s;'.LF;
+		$conf .= '		proxy_pass	'.$site['source_protocol'].'://'.$site['site_id'].'_'.$site['host'].';'.LF;
+		$conf .= '	}'.LF;
+	}
+	//默认
+	$conf .= '	location / {'.LF;
+		if($site['anti_cc']==2){
+			$anti_html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><title>RayCDN Cloud Security System</title><style>.spinner{margin:400px auto 50px auto;width:40px;height:40px;position:relative}.check{text-align:center}.cube1,.cube2{background-color:#333;width:15px;height:15px;position:absolute;top:0;left:0;-webkit-animation:sk-cubemove 1.8s infinite ease-in-out;animation:sk-cubemove 1.8s infinite ease-in-out}.cube2{-webkit-animation-delay:-.9s;animation-delay:-.9s}@-webkit-keyframes sk-cubemove{25%{-webkit-transform:translateX(42px) rotate(-90deg) scale(0.5)}50%{-webkit-transform:translateX(42px) translateY(42px) rotate(-180deg)}75%{-webkit-transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5)}100%{-webkit-transform:rotate(-360deg)}}@keyframes sk-cubemove{25%{transform:translateX(42px) rotate(-90deg) scale(0.5);-webkit-transform:translateX(42px) rotate(-90deg) scale(0.5)}50%{transform:translateX(42px) translateY(42px) rotate(-179deg);-webkit-transform:translateX(42px) translateY(42px) rotate(-179deg)}50.1%{transform:translateX(42px) translateY(42px) rotate(-180deg);-webkit-transform:translateX(42px) translateY(42px) rotate(-180deg)}75%{transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5);-webkit-transform:translateX(0px) translateY(42px) rotate(-270deg) scale(0.5)}100%{transform:rotate(-360deg);-webkit-transform:rotate(-360deg)}}</style></head><body><div class='spinner'><div class='cube1'></div><div class='cube2'></div></div><div class='check'><image style='height:30px' src='https://www.raycdn.com/demo/img/rcs.png'></image></div><script type='text/javascript'>document.cookie='shieldval=\$anticccode;path=/';setTimeout('window.location.reload()',3000);</script><iframe src='https://www.raycdn.com/inc/cctracker.php'style='display:none;'></iframe></body></html>";
+			$conf.='		more_set_headers "Content-Type:text/html";'.LF;
+			$conf.='		set $anticccode "hotiisanticc$clientRealIp";'.LF;
+			$conf.='		if ( $uri !~* .(png|jpg|jpeg|gif|ico|js|css) ){'.LF;
+			$conf.='			set $check "${check}1";'.LF;
+			$conf.="		}\n";
+			$conf.='		if ($cookie_shieldval != $anticccode){'.LF;
+			$conf.='			set $check "${check}1";'.LF;
+			$conf.="		}\n";
+			$conf.='		if ($check = 11){'.LF;
+			$conf.="			return 502 \"$anti_html\";".LF;
+			$conf.="		}".LF;
+		}
+	$conf .= '		proxy_pass	'.$site['source_protocol'].'://'.$site['site_id'].'_'.$site['host'].';'.LF;
+	$conf .= '		proxy_set_header   Host $host;'.LF;
+	$conf .= '		proxy_set_header   X-Real-IP  $remote_addr;'.LF;
+	$conf .= '		proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;'.LF;
+	if($site['all_cache_switch']){
+		if($site['all_cache_anyway']){
+			$conf .= '		proxy_ignore_headers X-Accel-Expires Expires Cache-Control Set-Cookie;'.LF;
+		}
+		$conf .= '		proxy_cache_valid 200 '.$site['all_cache_time'].$site['all_cache_unit'].';'.LF;
+		$conf .= '		proxy_cache_valid any 10s;'.LF;
+	}
+	if($site['source_protocol']=='https'){
+		$conf .= '		subs_filter_types text/plain text/css application/javascript application/x-javascript text/javascript;'.LF;
+		$conf .= '		subs_filter http://$host https://$host;'.LF;
+	}
+	// $conf .= '		proxy_set_header Accept-Encoding "";'.LF;
+	$conf .= '	}'.LF;
+	//错误页面
+	$conf .= '	location = /raycdn_error_page_50x.html {'.LF;
+	$conf .= '		root /raycdn/raycdn-nginx/html;'.LF;
+	$conf .= '	}'.LF;
+	return $conf;
+}
+function call_api($task,$para){
+	global $api_url;
+	$i = 0;
+	do{
+		$data = getHttpResponsePOST($api_url.$task, $para);
+		$data = json_decode($data,true);
+		$i++;
+	}while(!is_array($data) && $i<3);
+	if(is_array($data)){
+		return $data;
+	}else{
+		echo getHttpResponsePOST($api_url.$task, $para);
+		echo 'API fail 3 times.'.LF;
+		return false;
+		exit;
+	}
+}
+function getHttpResponsePOST($url, $para) {
+	$curl = curl_init($url);
+	// if(substr($url,0,5)=='https'){
+		// curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, true);//SSL证书认证
+		// curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 2);//严格认证
+		// curl_setopt($curl, CURLOPT_CAINFO,'/root/cacert.pem');//证书地址
+	// }
+	curl_setopt($curl, CURLOPT_TIMEOUT, 10);
+	curl_setopt($curl,CURLOPT_HEADER, 0 ); // 过滤HTTP头
+	curl_setopt($curl,CURLOPT_RETURNTRANSFER, 1);// 显示输出结果
+	curl_setopt($curl,CURLOPT_POST,true); // post传输数据
+	curl_setopt($curl,CURLOPT_POSTFIELDS,$para);// post传输数据
+	curl_setopt($curl,CURLOPT_FOLLOWLOCATION, 1);
+	
+	$responseText = curl_exec($curl);
+	// if(!$responseText && curl_error($curl)){
+		// $responseText =  curl_error($curl);
+	// }
+	curl_close($curl);
+	return $responseText;
+}
+function get_ssl_cert($id){
+	if(file_exists(SSL_DIR.$id.'.cert')){
+		return SSL_DIR.$id.'.cert';
+	}else{
+		$para = array(
+			'id'=>$id,
+		);
+		$data = call_api('get_ssl',$para);
+		if($data['status']=='success'){
+			file_put_contents(SSL_DIR.$id.'.cert',$data['cert']);
+			return SSL_DIR.$id.'.cert';
+		}else{
+			exit('cert get error');
+		}
+	}
+}
+function get_ssl_key($id){
+	if(file_exists(SSL_DIR.$id.'.key')){
+		return SSL_DIR.$id.'.key';
+	}else{
+		$para = array(
+			'id'=>$id,
+		);
+		$data = call_api('get_ssl',$para);
+		if($data['status']=='success'){
+			file_put_contents(SSL_DIR.$id.'.key',$data['key']);
+			return SSL_DIR.$id.'.key';
+		}else{
+			exit('key get error');
+		}
+	}
+}
+//end
+?>
